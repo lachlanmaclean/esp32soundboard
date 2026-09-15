@@ -1,7 +1,12 @@
-FROM node:22-alpine AS base
+# Debian-based (glibc), not Alpine (musl) - musl's DNS resolver has known
+# reliability issues with the kind of fresh, per-session lookups Discord
+# voice needs (a new region-specific hostname every connection), which
+# caused voice connections to hang even with correct networking otherwise.
+FROM node:22-bookworm-slim AS base
 # openssl: Prisma's query engine. ffmpeg: transcodes uploaded mp3/wav/ogg to
 # Opus for @discordjs/voice.
-RUN apk add --no-cache openssl ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 
 # --- deps: install full workspace so npm can resolve internal packages ---
