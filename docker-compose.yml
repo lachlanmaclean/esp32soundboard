@@ -33,11 +33,11 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       PORTAL_URL: ${PORTAL_URL}
+    expose:
+      - "4000"
     depends_on:
       - postgres
       - migrate
-    ports:
-      - "4000:4000"
 
   portal:
     build:
@@ -52,11 +52,11 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       SERVER_INTERNAL_URL: http://server:4000
+    expose:
+      - "3000"
     depends_on:
       - postgres
       - migrate
-    ports:
-      - "3000:3000"
 
 volumes:
   postgres_data:
