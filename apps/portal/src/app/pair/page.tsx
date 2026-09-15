@@ -1,10 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-
-// Internal URL for the bot/API server, reachable on the Docker network
-// (e.g. http://server:4000) — not exposed to the browser.
-const SERVER_URL = process.env.SERVER_INTERNAL_URL ?? "http://localhost:4000";
+import { SERVER_URL } from "@/lib/serverApi";
 
 async function confirmPairing(pairingCode: string, userId: string) {
   "use server";
