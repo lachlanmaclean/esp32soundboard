@@ -25,6 +25,7 @@ export default async function HomePage() {
       <main>
         <h1>Gooseboard</h1>
         <p>Could not find your account. Try signing in again.</p>
+        <a href="/api/auth/signout">Sign out</a>
       </main>
     );
   }
@@ -56,6 +57,7 @@ export default async function HomePage() {
     return (
       <main>
         <h1>Gooseboard</h1>
+        <a href="/api/auth/signout">Sign out</a>
         <h2>Choose a server</h2>
         <p>Pick the Discord server this device should play sounds into. The bot must already be invited to it.</p>
         <p>
@@ -124,7 +126,9 @@ export default async function HomePage() {
   return (
     <main>
       <h1>Gooseboard</h1>
-      <p>Signed in as {session.user.name}</p>
+      <p>
+        Signed in as {session.user.name} — <a href="/api/auth/signout">Sign out</a>
+      </p>
 
       <section>
         <h2>
