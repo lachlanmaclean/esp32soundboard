@@ -12,6 +12,22 @@ export class TriggerError extends Error {}
  * currently sitting in, in the guild they've linked. No manual "join voice"
  * step needed — the bot follows the user.
  */
+/**
+ * Discord only lets an account sit in one voice channel at a time, across
+ * every server — so there's no need to pin a user to a particular guild.
+ * Whichever channel they're in is where the sound goes.
+ *
+ * Reads the local voice-state cache (kept current by the GuildVoiceStates
+ * intent) rather than hitting Discord's API on every tap.
+ */
+function findUserVoiceChannel(discordId: string) {
+  for (const guild of discordClient.guilds.cache.values()) {
+    const channel = guild.voiceStates.cache.get(discordId)?.channel;
+    if (channel) return channel;
+  }
+  return null;
+}
+
 export async function playSoundForUser(userId: string, soundId: string) {
   const [user, sound] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
@@ -19,20 +35,12 @@ export async function playSoundForUser(userId: string, soundId: string) {
   ]);
 
   if (!user) throw new TriggerError("User not found");
-  if (!user.guildId) throw new TriggerError("No server linked to this account yet");
   if (!sound) throw new TriggerError("Sound not found");
 
-  const guild = discordClient.guilds.cache.get(user.guildId);
-  if (!guild) throw new TriggerError("Bot is not in the linked server");
-
-  // Read from the local voice-state cache (kept current by the
-  // GuildVoiceStates intent) rather than fetching the member over the
-  // Discord API, which would add a round trip to every single tap.
-  const channel =
-    guild.voiceStates.cache.get(user.discordId)?.channel ??
-    (await guild.members.fetch(user.discordId).catch(() => null))?.voice.channel;
-
-  if (!channel) throw new TriggerError("You're not in a voice channel in that server");
+  const channel = findUserVoiceChannel(user.discordId);
+  if (!channel) {
+    throw new TriggerError("Join a voice channel in a server Gooseboard is in, then try again");
+  }
 
   const sourcePath = path.join(env.uploadDir, path.basename(sound.audioUrl));
   const opusPath = await ensureOpusFile(sourcePath);

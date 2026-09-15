@@ -1,6 +1,6 @@
 import express from "express";
 import { env } from "./env";
-import { startBot, discordClient } from "./bot/client";
+import { startBot } from "./bot/client";
 import { playSoundForUser, TriggerError } from "./bot/trigger";
 
 /**
@@ -15,10 +15,6 @@ async function main() {
 
   const app = express();
   app.use(express.json());
-
-  app.get("/internal/guilds", (_req, res) => {
-    res.json({ guildIds: [...discordClient.guilds.cache.keys()] });
-  });
 
   app.post("/internal/trigger", async (req, res) => {
     const { userId, soundId } = req.body as { userId?: string; soundId?: string };

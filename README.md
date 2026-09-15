@@ -9,7 +9,12 @@ A Discord soundboard triggered by a physical ESP32 CYD (Cheap Yellow Display).
   containers. See "Why two processes?" below. Source of truth for devices,
   pairing, and sound config.
 - `apps/portal` — Next.js web portal. Discord OAuth2 login, sound library
-  management, device pairing/unpairing.
+  management, device pairing/unpairing, and a mobile soundboard at `/board`.
+
+Sounds belong to a Discord account, not a server. There's nothing to
+configure per-server: a Discord user can only be in one voice channel at a
+time across all servers, so playback just finds wherever you currently are,
+in any server the bot shares with you.
 - `packages/db` — Prisma schema and generated client, shared by both apps.
 - `packages/shared` — TypeScript types shared across server, portal, and (in
   spirit) the firmware's JSON payloads.
@@ -47,7 +52,7 @@ directly. That only works cleanly for a service with no public domain
 though, since Traefik's usual container-network routing doesn't apply to a
 host-networked container - so the public API stays on the normal bridge
 network as its own service, and proxies to the bot's small internal HTTP API
-(guild list, trigger playback) over `host.docker.internal`.
+over `host.docker.internal` to trigger playback.
 
 If you ever see Discord voice connections stuck in `signalling` or bouncing
 `connecting -> signalling` without reaching `ready` (check the `bot`

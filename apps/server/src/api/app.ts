@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import { devicesRouter } from "./routes/devices";
 import { soundsRouter } from "./routes/sounds";
-import { botRouter } from "./routes/bot";
 import { env } from "../env";
 
 export function createApp() {
@@ -16,7 +15,6 @@ export function createApp() {
 
   app.use("/api/devices", devicesRouter);
   app.use("/api/sounds", soundsRouter);
-  app.use("/api/bot", botRouter);
 
   return app;
 }

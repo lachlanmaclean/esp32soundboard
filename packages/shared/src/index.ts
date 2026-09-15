@@ -54,10 +54,3 @@ export interface DeviceSummary {
 export const ALLOWED_AUDIO_MIME_TYPES = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg"];
 export const MAX_AUDIO_FILE_BYTES = 5 * 1024 * 1024; // 5MB
 
-export type OAuthGuildSummary = {
-  id: string;
-  name: string;
-  icon: string | null;
-  /** True if the bitwise permissions on this guild include Administrator or ManageGuild. */
-  canManage: boolean;
-};

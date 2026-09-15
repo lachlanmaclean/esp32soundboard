@@ -8,13 +8,6 @@ export class BotProxyError extends Error {
   }
 }
 
-export async function fetchBotGuildIds(): Promise<string[]> {
-  const res = await fetch(`${env.botInternalUrl}/internal/guilds`);
-  if (!res.ok) throw new BotProxyError(res.status, "Bot service unreachable");
-  const body = (await res.json()) as { guildIds: string[] };
-  return body.guildIds;
-}
-
 export async function triggerPlayback(userId: string, soundId: string): Promise<void> {
   const res = await fetch(`${env.botInternalUrl}/internal/trigger`, {
     method: "POST",

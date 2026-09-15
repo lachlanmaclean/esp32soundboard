@@ -417,47 +417,6 @@ input[type="radio"] {
   width: 100%;
 }
 
-/* ---------- guild picker ---------- */
-
-.guild-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.guild-option {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg-input);
-  cursor: pointer;
-}
-
-.guild-option:hover {
-  border-color: var(--brand);
-}
-
-.guild-option .guild-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--bg-rail);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.guild-option-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
 /* ---------- sound library ---------- */
 
 .sound-grid {

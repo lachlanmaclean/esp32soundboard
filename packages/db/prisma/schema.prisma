@@ -14,9 +14,6 @@ model User {
   discordId       String   @unique
   discordUsername String
   discordAvatar   String?
-  // Discord guild (server) this user administers and has bound the bot to.
-  // Nullable: a user may sign in before completing guild setup.
-  guildId         String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

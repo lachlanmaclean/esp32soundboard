@@ -3,7 +3,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { fetchUserGuilds, buildBotInviteUrl } from "@/lib/discord";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
@@ -38,79 +37,6 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           <a className="btn btn-primary btn-block" href="/api/auth/signout">
             Sign out
           </a>
-        </div>
-      </main>
-    );
-  }
-
-  async function setGuildAction(formData: FormData) {
-    "use server";
-    const guildId = formData.get("guildId") as string;
-    await prisma.user.update({ where: { id: user!.id }, data: { guildId } });
-    revalidatePath("/");
-  }
-
-  if (!user.guildId) {
-    let eligibleGuilds: { id: string; name: string }[] = [];
-    let error: string | null = null;
-
-    try {
-      const [userGuilds, botGuildsRes] = await Promise.all([
-        fetchUserGuilds(session.discordAccessToken!),
-        fetch(`${SERVER_URL}/api/bot/guilds`).then((r) => r.json()) as Promise<{ guildIds: string[] }>,
-      ]);
-
-      eligibleGuilds = userGuilds
-        .filter((g) => g.canManage && botGuildsRes.guildIds.includes(g.id))
-        .map((g) => ({ id: g.id, name: g.name }));
-    } catch {
-      error = "Could not load your Discord servers. Try signing in again.";
-    }
-
-    return (
-      <main className="auth-screen">
-        <div className="auth-card" style={{ maxWidth: 480, textAlign: "left" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="auth-logo" style={{ fontSize: 24 }}>🪿</span>
-              <h1 style={{ fontSize: 18 }}>Gooseboard</h1>
-            </div>
-            <a className="btn-link" href="/api/auth/signout">Sign out</a>
-          </div>
-
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Choose a server</h2>
-            <p>Pick the Discord server this device should play sounds into. The bot must already be invited to it.</p>
-          </div>
-
-          <p className="card-subtext">
-            Don&apos;t see your server below?{" "}
-            <a href={buildBotInviteUrl()} target="_blank" rel="noopener noreferrer">
-              Add Gooseboard to a server
-            </a>{" "}
-            you manage, then reload this page.
-          </p>
-
-          {error && <p className="alert">{error}</p>}
-
-          {!error && eligibleGuilds.length === 0 && (
-            <div className="empty-state">No eligible servers found yet.</div>
-          )}
-
-          {!error && eligibleGuilds.length > 0 && (
-            <form action={setGuildAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div className="guild-list">
-                {eligibleGuilds.map((guild) => (
-                  <label key={guild.id} className="guild-option">
-                    <input type="radio" name="guildId" value={guild.id} required />
-                    <span className="guild-icon">{guild.name.slice(0, 2).toUpperCase()}</span>
-                    <span className="guild-option-name">{guild.name}</span>
-                  </label>
-                ))}
-              </div>
-              <button className="btn btn-primary btn-block" type="submit">Confirm</button>
-            </form>
-          )}
         </div>
       </main>
     );
@@ -164,6 +90,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     await fetch(`${SERVER_URL}/api/devices/${cuid}/unpair`, { method: "POST" });
     revalidatePath("/");
   }
+
 
   return (
     <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿">
@@ -242,6 +169,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           </div>
         )}
       </section>
+
     </Shell>
   );
 }

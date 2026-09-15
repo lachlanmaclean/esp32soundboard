@@ -1,3 +1,5 @@
+import { buildBotInviteUrl } from "@/lib/discord";
+
 function initials(name: string) {
   return name.trim().slice(0, 2).toUpperCase();
 }
@@ -39,6 +41,22 @@ export function Shell({
             <li>
               <a className="nav-item" href="#devices">
                 <span className="nav-icon">📟</span> Devices
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div className="nav-section-label">Discord</div>
+          <ul className="nav-list">
+            <li>
+              <a
+                className="nav-item"
+                href={buildBotInviteUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="nav-icon">➕</span> Add bot to a server
               </a>
             </li>
           </ul>
