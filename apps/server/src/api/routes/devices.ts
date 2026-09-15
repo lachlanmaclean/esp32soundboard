@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
+import { playSoundForUser, TriggerError } from "../../bot/trigger";
 import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS } from "@gooseboard/shared";
-import type { DeviceRegisterRequest, DeviceRegisterResponse } from "@gooseboard/shared";
+import type { DeviceRegisterRequest, DeviceRegisterResponse, TriggerSoundRequest } from "@gooseboard/shared";
 
 export const devicesRouter = Router();
 
@@ -96,4 +97,29 @@ devicesRouter.post("/:cuid/unpair", async (req, res) => {
   });
 
   return res.status(204).send();
+});
+
+/** Called by the CYD when a button is tapped. */
+devicesRouter.post("/trigger", async (req, res) => {
+  const { cuid, soundId } = req.body as TriggerSoundRequest;
+
+  if (!cuid || !soundId) {
+    return res.status(400).json({ error: "cuid and soundId are required" });
+  }
+
+  const device = await prisma.device.findUnique({ where: { cuid } });
+  if (!device?.userId) {
+    return res.status(404).json({ error: "Device not paired" });
+  }
+
+  try {
+    await playSoundForUser(device.userId, soundId);
+    return res.status(202).json({ ok: true });
+  } catch (error) {
+    if (error instanceof TriggerError) {
+      return res.status(409).json({ error: error.message });
+    }
+    console.error("[trigger] playback failed", error);
+    return res.status(500).json({ error: "Playback failed" });
+  }
 });

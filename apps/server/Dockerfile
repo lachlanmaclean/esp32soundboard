@@ -1,6 +1,7 @@
 FROM node:22-alpine AS base
-# Prisma's query engine needs openssl on Alpine.
-RUN apk add --no-cache openssl
+# openssl: Prisma's query engine. ffmpeg: transcodes uploaded mp3/wav/ogg to
+# Opus for @discordjs/voice.
+RUN apk add --no-cache openssl ffmpeg
 WORKDIR /repo
 
 # --- deps: install full workspace so npm can resolve internal packages ---

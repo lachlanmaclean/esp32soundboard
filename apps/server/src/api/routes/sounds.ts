@@ -5,6 +5,7 @@ import fs from "fs";
 import { nanoid } from "nanoid";
 import { prisma } from "../../db";
 import { env } from "../../env";
+import { playSoundForUser, TriggerError } from "../../bot/trigger";
 import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 
 export const soundsRouter = Router();
@@ -49,6 +50,25 @@ soundsRouter.post("/", upload.single("audio"), async (req, res) => {
   });
 
   return res.status(201).json(sound);
+});
+
+/** Manual test-play from the portal, bypassing a physical device. */
+soundsRouter.post("/:id/play", async (req, res) => {
+  const { userId } = req.body as { userId?: string };
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+
+  try {
+    await playSoundForUser(userId, req.params.id);
+    return res.status(202).json({ ok: true });
+  } catch (error) {
+    if (error instanceof TriggerError) {
+      return res.status(409).json({ error: error.message });
+    }
+    console.error("[sounds] test playback failed", error);
+    return res.status(500).json({ error: "Playback failed" });
+  }
 });
 
 soundsRouter.delete("/:id", async (req, res) => {

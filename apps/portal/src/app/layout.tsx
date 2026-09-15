@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "Gooseboard",
   description: "Manage your Gooseboard devices and sound library",

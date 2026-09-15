@@ -5,15 +5,22 @@ import { prisma } from "@/lib/db";
 import { fetchUserGuilds, buildBotInviteUrl } from "@/lib/discord";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
+import { Shell } from "@/components/Shell";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
     return (
-      <main>
-        <h1>Gooseboard</h1>
-        <a href="/api/auth/signin/discord">Sign in with Discord</a>
+      <main className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-logo">🪿</div>
+          <h1>Gooseboard</h1>
+          <p>Sign in with Discord to manage your sound library and devices.</p>
+          <a className="btn btn-primary btn-block" href="/api/auth/signin/discord">
+            Sign in with Discord
+          </a>
+        </div>
       </main>
     );
   }
@@ -22,10 +29,15 @@ export default async function HomePage() {
 
   if (!user) {
     return (
-      <main>
-        <h1>Gooseboard</h1>
-        <p>Could not find your account. Try signing in again.</p>
-        <a href="/api/auth/signout">Sign out</a>
+      <main className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-logo">🪿</div>
+          <h1>Gooseboard</h1>
+          <p>Could not find your account. Try signing in again.</p>
+          <a className="btn btn-primary btn-block" href="/api/auth/signout">
+            Sign out
+          </a>
+        </div>
       </main>
     );
   }
@@ -55,35 +67,50 @@ export default async function HomePage() {
     }
 
     return (
-      <main>
-        <h1>Gooseboard</h1>
-        <a href="/api/auth/signout">Sign out</a>
-        <h2>Choose a server</h2>
-        <p>Pick the Discord server this device should play sounds into. The bot must already be invited to it.</p>
-        <p>
-          Don't see your server below?{" "}
-          <a href={buildBotInviteUrl()} target="_blank" rel="noopener noreferrer">
-            Add Gooseboard to a server
-          </a>{" "}
-          you manage, then reload this page.
-        </p>
+      <main className="auth-screen">
+        <div className="auth-card" style={{ maxWidth: 480, textAlign: "left" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="auth-logo" style={{ fontSize: 24 }}>🪿</span>
+              <h1 style={{ fontSize: 18 }}>Gooseboard</h1>
+            </div>
+            <a className="btn-link" href="/api/auth/signout">Sign out</a>
+          </div>
 
-        {error && <p>{error}</p>}
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Choose a server</h2>
+            <p>Pick the Discord server this device should play sounds into. The bot must already be invited to it.</p>
+          </div>
 
-        {!error && eligibleGuilds.length === 0 && (
-          <p>No eligible servers found yet.</p>
-        )}
+          <p className="card-subtext">
+            Don&apos;t see your server below?{" "}
+            <a href={buildBotInviteUrl()} target="_blank" rel="noopener noreferrer">
+              Add Gooseboard to a server
+            </a>{" "}
+            you manage, then reload this page.
+          </p>
 
-        {!error && eligibleGuilds.length > 0 && (
-          <form action={setGuildAction}>
-            {eligibleGuilds.map((guild) => (
-              <label key={guild.id} style={{ display: "block" }}>
-                <input type="radio" name="guildId" value={guild.id} required /> {guild.name}
-              </label>
-            ))}
-            <button type="submit">Confirm</button>
-          </form>
-        )}
+          {error && <p className="alert">{error}</p>}
+
+          {!error && eligibleGuilds.length === 0 && (
+            <div className="empty-state">No eligible servers found yet.</div>
+          )}
+
+          {!error && eligibleGuilds.length > 0 && (
+            <form action={setGuildAction} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className="guild-list">
+                {eligibleGuilds.map((guild) => (
+                  <label key={guild.id} className="guild-option">
+                    <input type="radio" name="guildId" value={guild.id} required />
+                    <span className="guild-icon">{guild.name.slice(0, 2).toUpperCase()}</span>
+                    <span className="guild-option-name">{guild.name}</span>
+                  </label>
+                ))}
+              </div>
+              <button className="btn btn-primary btn-block" type="submit">Confirm</button>
+            </form>
+          )}
+        </div>
       </main>
     );
   }
@@ -116,6 +143,20 @@ export default async function HomePage() {
     revalidatePath("/");
   }
 
+  async function playSoundAction(formData: FormData) {
+    "use server";
+    const id = formData.get("id") as string;
+    const res = await fetch(`${SERVER_URL}/api/sounds/${id}/play`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user!.id }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Playback failed");
+    }
+  }
+
   async function unpairDeviceAction(formData: FormData) {
     "use server";
     const cuid = formData.get("cuid") as string;
@@ -124,55 +165,80 @@ export default async function HomePage() {
   }
 
   return (
-    <main>
-      <h1>Gooseboard</h1>
-      <p>
-        Signed in as {session.user.name} — <a href="/api/auth/signout">Sign out</a>
-      </p>
+    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿">
+      <section className="card" id="sounds">
+        <div className="card-header">
+          <h2>🔊 Sound library</h2>
+          <span className="count-badge">
+            {sounds.length}/{MAX_SOUNDS_PER_USER}
+          </span>
+        </div>
 
-      <section>
-        <h2>
-          Sound library ({sounds.length}/{MAX_SOUNDS_PER_USER})
-        </h2>
-        <ul>
-          {sounds.map((sound) => (
-            <li key={sound.id}>
-              <span style={{ color: sound.color }}>{sound.icon ?? "🔊"} {sound.displayName}</span>
-              <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-              <form action={deleteSoundAction} style={{ display: "inline" }}>
-                <input type="hidden" name="id" value={sound.id} />
-                <button type="submit">Delete</button>
-              </form>
-            </li>
-          ))}
-        </ul>
+        {sounds.length === 0 ? (
+          <div className="empty-state">No sounds yet. Upload one below to get started.</div>
+        ) : (
+          <div className="sound-grid">
+            {sounds.map((sound) => (
+              <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
+                <div className="sound-tile-head">
+                  <span className="sound-tile-name" style={{ color: sound.color }}>
+                    <span>{sound.icon ?? "🔊"}</span>
+                    <span>{sound.displayName}</span>
+                  </span>
+                  <form action={deleteSoundAction} className="delete-form">
+                    <input type="hidden" name="id" value={sound.id} />
+                    <button className="btn-danger" type="submit" title="Delete">✕</button>
+                  </form>
+                </div>
+                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                <form action={playSoundAction}>
+                  <input type="hidden" name="id" value={sound.id} />
+                  <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
 
         {sounds.length < MAX_SOUNDS_PER_USER && (
-          <form action={uploadSoundAction}>
+          <form action={uploadSoundAction} className="field-row">
             <input type="text" name="displayName" placeholder="Name" required />
             <input type="color" name="color" defaultValue="#5865F2" required />
-            <input type="text" name="icon" placeholder="Icon (emoji, optional)" maxLength={4} />
+            <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />
             <input type="file" name="audio" accept="audio/mpeg,audio/wav,audio/ogg" required />
-            <button type="submit">Upload</button>
+            <button className="btn btn-primary" type="submit">Upload</button>
           </form>
         )}
       </section>
 
-      <section>
-        <h2>Devices</h2>
-        {devices.length === 0 && <p>No devices paired yet. Scan the QR code on your Gooseboard's screen to pair one.</p>}
-        <ul>
-          {devices.map((device) => (
-            <li key={device.cuid}>
-              {device.cuid} — last seen {device.lastSeenAt?.toLocaleString() ?? "never"}
-              <form action={unpairDeviceAction} style={{ display: "inline" }}>
-                <input type="hidden" name="cuid" value={device.cuid} />
-                <button type="submit">Unpair</button>
-              </form>
-            </li>
-          ))}
-        </ul>
+      <section className="card" id="devices">
+        <div className="card-header">
+          <h2>📟 Devices</h2>
+          <span className="count-badge">{devices.length}</span>
+        </div>
+
+        {devices.length === 0 ? (
+          <div className="empty-state">No devices paired yet. Scan the QR code on your Gooseboard&apos;s screen to pair one.</div>
+        ) : (
+          <div className="device-list">
+            {devices.map((device) => (
+              <div key={device.cuid} className="device-row">
+                <span className="status-dot" />
+                <div className="device-info">
+                  <span className="device-id">{device.cuid}</span>
+                  <span className="device-seen">
+                    Last seen {device.lastSeenAt?.toLocaleString() ?? "never"}
+                  </span>
+                </div>
+                <form action={unpairDeviceAction}>
+                  <input type="hidden" name="cuid" value={device.cuid} />
+                  <button className="btn btn-danger" type="submit">Unpair</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
-    </main>
+    </Shell>
   );
 }
