@@ -5,7 +5,7 @@ import fs from "fs";
 import { nanoid } from "nanoid";
 import { prisma } from "../../db";
 import { env } from "../../env";
-import { playSoundForUser, TriggerError } from "../../bot/trigger";
+import { triggerPlayback, BotProxyError } from "../botClient";
 import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 
 export const soundsRouter = Router();
@@ -60,11 +60,11 @@ soundsRouter.post("/:id/play", async (req, res) => {
   }
 
   try {
-    await playSoundForUser(userId, req.params.id);
+    await triggerPlayback(userId, req.params.id);
     return res.status(202).json({ ok: true });
   } catch (error) {
-    if (error instanceof TriggerError) {
-      return res.status(409).json({ error: error.message });
+    if (error instanceof BotProxyError) {
+      return res.status(error.status).json({ error: error.message });
     }
     console.error("[sounds] test playback failed", error);
     return res.status(500).json({ error: "Playback failed" });

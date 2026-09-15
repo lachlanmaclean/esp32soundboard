@@ -8,6 +8,10 @@ services:
       POSTGRES_DB: gooseboard
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # Loopback-only, so the host-networked `bot` service can reach it via
+    # 127.0.0.1 without exposing it beyond this machine.
+    ports:
+      - "127.0.0.1:5432:5432"
 
   # Runs `prisma migrate deploy` against postgres, then exits. server/portal
   # depend on it completing so schema is always up to date on deploy.
@@ -21,6 +25,8 @@ services:
     depends_on:
       - postgres
 
+  # Public API: device pairing, sound uploads, config. Plain HTTP - the
+  # default bridge network is fine here and keeps normal Traefik routing.
   server:
     build:
       context: .
@@ -34,10 +40,39 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       PORTAL_URL: ${PORTAL_URL}
       UPLOAD_DIR: /data/uploads
+      BOT_INTERNAL_URL: http://host.docker.internal:4100
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - uploads_data:/data/uploads
     expose:
       - "4000"
+    depends_on:
+      - postgres
+      - migrate
+      - bot
+
+  # Discord bot + voice playback, run with host networking. Discord voice
+  # needs direct outbound UDP for its IP-discovery handshake, which the
+  # default Docker bridge network's NAT breaks - this bypasses that layer
+  # entirely. Not reachable publicly; `server` proxies to it internally.
+  bot:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    command: ["node", "apps/server/dist/bot-index.js"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DATABASE_URL: postgresql://gooseboard:${POSTGRES_PASSWORD}@127.0.0.1:5432/gooseboard
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      PORTAL_URL: ${PORTAL_URL}
+      UPLOAD_DIR: /data/uploads
+      BOT_INTERNAL_PORT: "4100"
+    volumes:
+      - uploads_data:/data/uploads
     depends_on:
       - postgres
       - migrate
