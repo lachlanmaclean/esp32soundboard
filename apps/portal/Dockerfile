@@ -18,8 +18,6 @@ COPY package-lock.json* ./
 COPY packages/db packages/db
 COPY packages/shared packages/shared
 COPY apps/portal apps/portal
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 # prisma generate downloads its query-engine binary over the network; retry
 # on the transient ECONNRESET Prisma's own client can throw as an unhandled
 # rejection instead of retrying cleanly.

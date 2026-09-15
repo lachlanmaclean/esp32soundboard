@@ -36,24 +36,6 @@ export interface TriggerSoundRequest {
   soundId: string;
 }
 
-export interface SoundDTO {
-  id: string;
-  displayName: string;
-  color: string;
-  icon: string | null;
-  /** Path relative to the server's origin, e.g. "/uploads/abc123.mp3". */
-  audioUrl: string;
-}
-
-export interface DeviceSummary {
-  cuid: string;
-  lastSeenAt: string | null;
-  createdAt: string;
-}
-
-export const ALLOWED_AUDIO_MIME_TYPES = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg"];
-export const MAX_AUDIO_FILE_BYTES = 5 * 1024 * 1024; // 5MB
-
 export type OAuthGuildSummary = {
   id: string;
   name: string;

@@ -33,9 +33,6 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       PORTAL_URL: ${PORTAL_URL}
-      UPLOAD_DIR: /data/uploads
-    volumes:
-      - uploads_data:/data/uploads
     expose:
       - "4000"
     depends_on:
@@ -46,10 +43,6 @@ services:
     build:
       context: .
       dockerfile: apps/portal/Dockerfile
-      args:
-        # Baked in at build time: the browser fetches audio files directly from
-        # here, so it must be the server's public domain, not the internal one.
-        NEXT_PUBLIC_API_URL: ${API_PUBLIC_URL}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -67,4 +60,3 @@ services:
 
 volumes:
   postgres_data:
-  uploads_data:
