@@ -173,7 +173,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         <div className="card-header">
           <h2>🔊 Sound library</h2>
           <span className="count-badge">
-            {sounds.length}/{MAX_SOUNDS_PER_USER}
+            <a href="/board">Open soundboard →</a> &nbsp; {sounds.length}/{MAX_SOUNDS_PER_USER}
           </span>
         </div>
 

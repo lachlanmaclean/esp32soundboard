@@ -4,19 +4,28 @@ import {
   createAudioResource,
   entersState,
   getVoiceConnection,
+  VoiceConnection,
   VoiceConnectionStatus,
-  AudioPlayerStatus,
+  AudioPlayer,
+  NoSubscriberBehavior,
 } from "@discordjs/voice";
 import type { VoiceBasedChannel } from "discord.js";
 
-/**
- * joinVoiceChannel() reuses an existing connection for the guild if one is
- * already registered — including one stuck/broken from a previous failed
- * attempt that never got destroyed. Destroying first guarantees a clean
- * connection every time.
- */
+// One player per guild, kept alive alongside the connection so rapid taps
+// reuse it instead of stacking subscriptions. Playing while already playing
+// interrupts the current sound, which is what a soundboard should do.
+const playersByGuild = new Map<string, AudioPlayer>();
+
+function attachStateLogging(connection: VoiceConnection) {
+  connection.on("stateChange", (oldState, newState) => {
+    console.log(`[voice] connection ${oldState.status} -> ${newState.status}`);
+  });
+}
+
+/** Always tears down any existing connection first, so callers get a clean one. */
 export function joinFreshVoiceChannel(channel: VoiceBasedChannel) {
   getVoiceConnection(channel.guild.id)?.destroy();
+  playersByGuild.delete(channel.guild.id);
 
   const connection = joinVoiceChannel({
     channelId: channel.id,
@@ -24,41 +33,69 @@ export function joinFreshVoiceChannel(channel: VoiceBasedChannel) {
     adapterCreator: channel.guild.voiceAdapterCreator,
   });
 
-  connection.on("stateChange", (oldState, newState) => {
-    console.log(`[voice] connection ${oldState.status} -> ${newState.status}`);
-  });
-
+  attachStateLogging(connection);
   return connection;
 }
 
 /**
- * Joins the given voice channel (if not already connected) and plays a single
- * audio file, then leaves once playback finishes.
+ * Reuses a healthy connection to the same channel if one exists, so the bot
+ * stays put between sounds rather than rejoining every time. Only rebuilds
+ * when there's nothing usable, or the user has moved to another channel.
+ */
+function getOrCreateConnection(channel: VoiceBasedChannel) {
+  const existing = getVoiceConnection(channel.guild.id);
+
+  if (existing) {
+    const sameChannel = existing.joinConfig.channelId === channel.id;
+    const usable =
+      existing.state.status === VoiceConnectionStatus.Ready ||
+      existing.state.status === VoiceConnectionStatus.Connecting ||
+      existing.state.status === VoiceConnectionStatus.Signalling;
+
+    if (sameChannel && usable) return existing;
+  }
+
+  return joinFreshVoiceChannel(channel);
+}
+
+function getOrCreatePlayer(guildId: string, connection: VoiceConnection) {
+  const existing = playersByGuild.get(guildId);
+  if (existing) return existing;
+
+  const player = createAudioPlayer({
+    // The bot lingers in the channel with nobody subscribed between sounds;
+    // without this it would stop rather than idle.
+    behaviors: { noSubscriber: NoSubscriberBehavior.Play },
+  });
+  player.on("error", (error) => console.error("[voice] player error", error));
+
+  connection.subscribe(player);
+  playersByGuild.set(guildId, player);
+  return player;
+}
+
+/**
+ * Joins the user's voice channel if needed and starts playing a sound.
+ * Returns once playback has started, not when it finishes — the bot stays
+ * connected afterwards, ready for the next tap.
  */
 export async function playSoundInChannel(channel: VoiceBasedChannel, audioUrl: string) {
-  const connection = joinFreshVoiceChannel(channel);
+  const connection = getOrCreateConnection(channel);
 
   try {
     await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
   } catch (error) {
     connection.destroy();
+    playersByGuild.delete(channel.guild.id);
     throw error;
   }
 
-  const player = createAudioPlayer();
-  const resource = createAudioResource(audioUrl);
+  const player = getOrCreatePlayer(channel.guild.id, connection);
+  player.play(createAudioResource(audioUrl));
+}
 
-  connection.subscribe(player);
-  player.play(resource);
-
-  return new Promise<void>((resolve, reject) => {
-    player.on(AudioPlayerStatus.Idle, () => {
-      connection.destroy();
-      resolve();
-    });
-    player.on("error", (error) => {
-      connection.destroy();
-      reject(error);
-    });
-  });
+/** Used by /leave, and whenever a connection should be torn down deliberately. */
+export function leaveVoiceChannel(guildId: string) {
+  getVoiceConnection(guildId)?.destroy();
+  playersByGuild.delete(guildId);
 }

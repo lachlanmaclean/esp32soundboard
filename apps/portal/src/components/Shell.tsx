@@ -27,6 +27,11 @@ export function Shell({
           <div className="nav-section-label">Dashboard</div>
           <ul className="nav-list">
             <li>
+              <a className="nav-item" href="/board">
+                <span className="nav-icon">🎛️</span> Soundboard
+              </a>
+            </li>
+            <li>
               <a className="nav-item" href="#sounds">
                 <span className="nav-icon">🔊</span> Sound library
               </a>

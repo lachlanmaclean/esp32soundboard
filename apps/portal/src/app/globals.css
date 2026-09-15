@@ -574,3 +574,113 @@ input[type="radio"] {
   border-radius: var(--radius-sm);
   font-size: 14px;
 }
+
+/* ---------- soundboard (mobile-first) ---------- */
+
+.board-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  background: var(--bg-rail);
+}
+
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.board-brand {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.board-alert {
+  margin: 0;
+}
+
+.board-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-content: start;
+}
+
+.board-tile {
+  --tile-color: var(--brand);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  padding: 16px 12px;
+  border: 2px solid var(--tile-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary); /* fallback for browsers without color-mix() */
+  background: color-mix(in srgb, var(--tile-color) 16%, var(--bg-primary));
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  /* Stops long-press selection/callouts and double-tap zoom on phones. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.board-tile:active {
+  transform: scale(0.96);
+}
+
+.board-tile-playing {
+  background: var(--bg-secondary); /* fallback for browsers without color-mix() */
+  background: color-mix(in srgb, var(--tile-color) 42%, var(--bg-primary));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tile-color) 25%, transparent);
+}
+
+.board-tile-error {
+  border-color: var(--red);
+  background: rgba(242, 63, 67, 0.16);
+}
+
+.board-tile-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.board-tile-name {
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.board-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@media (min-width: 640px) {
+  .board-screen {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .board-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .board-tile {
+    min-height: 140px;
+  }
+}
