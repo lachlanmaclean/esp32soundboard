@@ -2,10 +2,12 @@ import { Events, SlashCommandBuilder, GuildMember } from "discord.js";
 import { entersState, VoiceConnectionStatus } from "@discordjs/voice";
 import { discordClient } from "./client";
 import { joinFreshVoiceChannel, leaveVoiceChannel } from "./playback";
+import { buildHelpEmbed } from "./welcome";
 
 const commands = [
   new SlashCommandBuilder().setName("join").setDescription("Bring Gooseboard into your current voice channel").toJSON(),
   new SlashCommandBuilder().setName("leave").setDescription("Disconnect Gooseboard from voice").toJSON(),
+  new SlashCommandBuilder().setName("help").setDescription("Show Gooseboard's commands and portal link").toJSON(),
 ];
 
 async function registerCommandsForGuild(guildId: string) {
@@ -61,6 +63,11 @@ export function registerBotCommands() {
     if (interaction.commandName === "leave") {
       if (interaction.guildId) leaveVoiceChannel(interaction.guildId);
       await interaction.reply({ content: "Left voice.", ephemeral: true });
+      return;
+    }
+
+    if (interaction.commandName === "help") {
+      await interaction.reply({ embeds: [buildHelpEmbed()], ephemeral: true });
     }
   });
 }

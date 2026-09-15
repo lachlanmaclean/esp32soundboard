@@ -1,9 +1,9 @@
 import type { OAuthGuildSummary } from "@gooseboard/shared";
 import { canManageGuild } from "./auth";
 
-// View Channel + Connect + Speak — everything the bot needs to join a voice
-// channel and play a sound, nothing more.
-const BOT_PERMISSIONS = 1024 | 1048576 | 2097152;
+// View Channel, Send Messages + Embed Links (its welcome/help message), and
+// Connect + Speak (joining voice and playing a sound). Nothing more.
+const BOT_PERMISSIONS = 1024 | 2048 | 16384 | 1048576 | 2097152;
 
 /** Link that opens Discord's native "add bot to server" picker (scope=bot). */
 export function buildBotInviteUrl() {

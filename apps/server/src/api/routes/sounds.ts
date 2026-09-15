@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { prisma } from "../../db";
 import { env } from "../../env";
 import { triggerPlayback, BotProxyError } from "../botClient";
+import { transcodeToOpus, opusPathFor } from "../../audio";
 import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 
 export const soundsRouter = Router();
@@ -24,7 +25,9 @@ const upload = multer({
 });
 
 function deleteFile(filename: string) {
-  fs.unlink(path.join(env.uploadDir, filename), () => {});
+  const sourcePath = path.join(env.uploadDir, filename);
+  fs.unlink(sourcePath, () => {});
+  fs.unlink(opusPathFor(sourcePath), () => {});
 }
 
 /** Called from the portal's upload form (proxied, since only this container has the uploads volume). */
@@ -48,6 +51,14 @@ soundsRouter.post("/", upload.single("audio"), async (req, res) => {
   const sound = await prisma.sound.create({
     data: { userId, displayName, color, icon: icon || null, audioUrl: `/uploads/${req.file.filename}` },
   });
+
+  // Pre-encode for Discord now so the first tap isn't the one that pays for
+  // it. Playback falls back to the original file if this fails.
+  try {
+    await transcodeToOpus(path.join(env.uploadDir, req.file.filename));
+  } catch (error) {
+    console.error("[sounds] pre-encoding to Opus failed", error);
+  }
 
   return res.status(201).json(sound);
 });

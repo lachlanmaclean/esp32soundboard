@@ -58,7 +58,9 @@ export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
             type="button"
             className={`board-tile board-tile-${states[sound.id] ?? "idle"}`}
             style={{ ["--tile-color" as string]: sound.color }}
-            onClick={() => play(sound.id)}
+            // Fire on press, not click: browsers hold back click on touch
+            // devices, and a soundboard should respond the instant it's hit.
+            onPointerDown={() => play(sound.id)}
           >
             <span className="board-tile-icon">{sound.icon ?? "🔊"}</span>
             <span className="board-tile-name">{sound.displayName}</span>

@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits } from "discord.js";
 import { env } from "../env";
 import { registerBotCommands } from "./commands";
+import { registerWelcomeMessage } from "./welcome";
 
 export const discordClient = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -12,6 +13,7 @@ export async function startBot() {
   });
 
   registerBotCommands();
+  registerWelcomeMessage();
 
   await discordClient.login(env.discordBotToken);
 }

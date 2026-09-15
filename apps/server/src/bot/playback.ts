@@ -1,9 +1,11 @@
+import fs from "fs";
 import {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
   entersState,
   getVoiceConnection,
+  StreamType,
   VoiceConnection,
   VoiceConnectionStatus,
   AudioPlayer,
@@ -78,8 +80,16 @@ function getOrCreatePlayer(guildId: string, connection: VoiceConnection) {
  * Joins the user's voice channel if needed and starts playing a sound.
  * Returns once playback has started, not when it finishes — the bot stays
  * connected afterwards, ready for the next tap.
+ *
+ * `preEncoded` files are already 48kHz stereo Opus, so they stream straight
+ * through: no ffmpeg process to spawn, no Opus encoding. Anything else goes
+ * down the slow path where @discordjs/voice shells out to ffmpeg.
  */
-export async function playSoundInChannel(channel: VoiceBasedChannel, audioUrl: string) {
+export async function playSoundInChannel(
+  channel: VoiceBasedChannel,
+  filePath: string,
+  preEncoded: boolean,
+) {
   const connection = getOrCreateConnection(channel);
 
   try {
@@ -91,7 +101,11 @@ export async function playSoundInChannel(channel: VoiceBasedChannel, audioUrl: s
   }
 
   const player = getOrCreatePlayer(channel.guild.id, connection);
-  player.play(createAudioResource(audioUrl));
+  const resource = preEncoded
+    ? createAudioResource(fs.createReadStream(filePath), { inputType: StreamType.OggOpus })
+    : createAudioResource(filePath);
+
+  player.play(resource);
 }
 
 /** Used by /leave, and whenever a connection should be torn down deliberately. */
