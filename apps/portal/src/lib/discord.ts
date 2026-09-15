@@ -1,6 +1,20 @@
 import type { OAuthGuildSummary } from "@gooseboard/shared";
 import { canManageGuild } from "./auth";
 
+// View Channel + Connect + Speak — everything the bot needs to join a voice
+// channel and play a sound, nothing more.
+const BOT_PERMISSIONS = 1024 | 1048576 | 2097152;
+
+/** Link that opens Discord's native "add bot to server" picker (scope=bot). */
+export function buildBotInviteUrl() {
+  const params = new URLSearchParams({
+    client_id: process.env.DISCORD_CLIENT_ID!,
+    scope: "bot",
+    permissions: String(BOT_PERMISSIONS),
+  });
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+}
+
 interface DiscordApiGuild {
   id: string;
   name: string;

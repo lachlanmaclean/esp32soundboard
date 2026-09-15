@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { fetchUserGuilds } from "@/lib/discord";
+import { fetchUserGuilds, buildBotInviteUrl } from "@/lib/discord";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 
@@ -58,11 +58,18 @@ export default async function HomePage() {
         <h1>Gooseboard</h1>
         <h2>Choose a server</h2>
         <p>Pick the Discord server this device should play sounds into. The bot must already be invited to it.</p>
+        <p>
+          Don't see your server below?{" "}
+          <a href={buildBotInviteUrl()} target="_blank" rel="noopener noreferrer">
+            Add Gooseboard to a server
+          </a>{" "}
+          you manage, then reload this page.
+        </p>
 
         {error && <p>{error}</p>}
 
         {!error && eligibleGuilds.length === 0 && (
-          <p>No eligible servers found. Invite the bot to a server you manage, then reload this page.</p>
+          <p>No eligible servers found yet.</p>
         )}
 
         {!error && eligibleGuilds.length > 0 && (
