@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A person who has logged into the portal via Discord OAuth2.
+model User {
+  id              String   @id @default(cuid())
+  discordId       String   @unique
+  discordUsername String
+  discordAvatar   String?
+  // Discord guild (server) this user administers and has bound the bot to.
+  // Nullable: a user may sign in before completing guild setup.
+  guildId         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sounds  Sound[]
+  devices Device[]
+}
+
+// One of up to 8 sounds in a user's shared library (not per-server, not per-device).
+model Sound {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  color       String
+  icon        String?
+  // Path/URL to the stored audio file (local disk or object storage).
+  audioUrl    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// A physical CYD device. Devices can exist unpaired (userId null) between
+// factory reset / unbinding and the next pairing.
+model Device {
+  id                   String    @id @default(cuid())
+  // Hardware-generated unique ID the CYD reports on first check-in (its "CUID").
+  cuid                 String    @unique
+  userId               String?
+  user                 User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Short-lived code shown on the device's pairing screen (with QR code).
+  // Cleared once pairing completes.
+  pairingCode          String?   @unique
+  pairingCodeExpiresAt DateTime?
+  lastSeenAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
+}

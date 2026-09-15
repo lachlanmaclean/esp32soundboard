@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gooseboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: gooseboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Runs `prisma migrate deploy` against postgres, then exits. server/portal
+  # depend on it completing so schema is always up to date on deploy.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    command: ["node", "node_modules/.bin/prisma", "migrate", "deploy", "--schema", "packages/db/prisma/schema.prisma"]
+    environment:
+      DATABASE_URL: postgresql://gooseboard:${POSTGRES_PASSWORD}@postgres:5432/gooseboard
+    depends_on:
+      - postgres
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://gooseboard:${POSTGRES_PASSWORD}@postgres:5432/gooseboard
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      PORTAL_URL: ${PORTAL_URL}
+    depends_on:
+      - postgres
+      - migrate
+    ports:
+      - "4000:4000"
+
+  portal:
+    build:
+      context: .
+      dockerfile: apps/portal/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://gooseboard:${POSTGRES_PASSWORD}@postgres:5432/gooseboard
+      NEXTAUTH_URL: ${PORTAL_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      SERVER_INTERNAL_URL: http://server:4000
+    depends_on:
+      - postgres
+      - migrate
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
