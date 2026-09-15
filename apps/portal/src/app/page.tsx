@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { fetchUserGuilds, buildBotInviteUrl } from "@/lib/discord";
@@ -7,7 +8,7 @@ import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -131,7 +132,7 @@ export default async function HomePage() {
     const res = await fetch(`${SERVER_URL}/api/sounds`, { method: "POST", body: upstream });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Upload failed");
+      redirect(`/?error=${encodeURIComponent(body.error ?? "Upload failed")}`);
     }
     revalidatePath("/");
   }
@@ -153,7 +154,7 @@ export default async function HomePage() {
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "Playback failed");
+      redirect(`/?error=${encodeURIComponent(body.error ?? "Playback failed")}`);
     }
   }
 
@@ -166,6 +167,8 @@ export default async function HomePage() {
 
   return (
     <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿">
+      {searchParams.error && <p className="alert">{searchParams.error}</p>}
+
       <section className="card" id="sounds">
         <div className="card-header">
           <h2>🔊 Sound library</h2>

@@ -19,7 +19,16 @@ export async function playSoundInChannel(channel: VoiceBasedChannel, audioUrl: s
     adapterCreator: channel.guild.voiceAdapterCreator,
   });
 
-  await entersState(connection, VoiceConnectionStatus.Ready, 10_000);
+  connection.on("stateChange", (oldState, newState) => {
+    console.log(`[voice] connection ${oldState.status} -> ${newState.status}`);
+  });
+
+  try {
+    await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
+  } catch (error) {
+    connection.destroy();
+    throw error;
+  }
 
   const player = createAudioPlayer();
   const resource = createAudioResource(audioUrl);

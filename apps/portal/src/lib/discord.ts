@@ -9,7 +9,7 @@ const BOT_PERMISSIONS = 1024 | 1048576 | 2097152;
 export function buildBotInviteUrl() {
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
-    scope: "bot",
+    scope: "bot applications.commands",
     permissions: String(BOT_PERMISSIONS),
   });
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
