@@ -1,6 +1,7 @@
 import { Events, SlashCommandBuilder, GuildMember } from "discord.js";
-import { joinVoiceChannel, entersState, VoiceConnectionStatus, getVoiceConnection } from "@discordjs/voice";
+import { entersState, VoiceConnectionStatus, getVoiceConnection } from "@discordjs/voice";
 import { discordClient } from "./client";
+import { joinFreshVoiceChannel } from "./playback";
 
 const commands = [
   new SlashCommandBuilder().setName("join").setDescription("Bring Gooseboard into your current voice channel").toJSON(),
@@ -44,19 +45,15 @@ export function registerBotCommands() {
 
       await interaction.deferReply({ ephemeral: true });
 
+      const connection = joinFreshVoiceChannel(channel);
+
       try {
-        const connection = joinVoiceChannel({
-          channelId: channel.id,
-          guildId: channel.guild.id,
-          adapterCreator: channel.guild.voiceAdapterCreator,
-        });
         await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
         await interaction.editReply(`Joined **${channel.name}**.`);
       } catch (error) {
+        connection.destroy();
         console.error("[bot] /join failed", error);
-        await interaction.editReply(
-          "Couldn't establish a voice connection (timed out). This usually means outbound UDP is blocked on the host — check the server logs.",
-        );
+        await interaction.editReply("Couldn't establish a voice connection (timed out) — check the server logs.");
       }
       return;
     }
