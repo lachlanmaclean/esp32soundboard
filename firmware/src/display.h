@@ -20,7 +20,9 @@ public:
       auto cfg = _bus.config();
       cfg.spi_host = HSPI_HOST;
       cfg.spi_mode = 0;
-      cfg.freq_write = 40000000;
+      // 40MHz is often unstable on these boards' unshielded flying leads and
+      // shows up as garbled/scrambled pixels rather than a clean image.
+      cfg.freq_write = 27000000;
       cfg.freq_read = 16000000;
       cfg.spi_3wire = false;
       cfg.use_lock = true;
@@ -46,7 +48,9 @@ public:
       cfg.dummy_read_pixel = 8;
       cfg.dummy_read_bits = 1;
       cfg.readable = true;
-      cfg.invert = false;
+      // Most ESP32-2432S028R units need this on despite the panel's default;
+      // leave off invert = true if colors still look wrong the other way.
+      cfg.invert = true;
       cfg.rgb_order = false;
       cfg.dlen_16bit = false;
       cfg.bus_shared = false;
