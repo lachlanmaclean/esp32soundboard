@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { buildBotInviteUrl } from "@/lib/discord";
 
 function initials(name: string) {
@@ -17,9 +20,43 @@ export function Shell({
   titleIcon: string;
   children: React.ReactNode;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Locks background scroll while the drawer is open, and guarantees it
+  // never gets stuck locked (e.g. navigating away mid-animation).
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <button
+        type="button"
+        className="menu-toggle"
+        aria-label={menuOpen ? "Close menu" : "Open menu"}
+        aria-expanded={menuOpen}
+        aria-controls="sidebar-nav"
+        onClick={() => setMenuOpen((open) => !open)}
+      >
+        <span className={`menu-icon${menuOpen ? " menu-icon-open" : ""}`} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+      </button>
+
+      <div
+        className={`drawer-backdrop${menuOpen ? " drawer-backdrop-visible" : ""}`}
+        onClick={closeMenu}
+        aria-hidden="true"
+      />
+
+      <aside id="sidebar-nav" className={`sidebar${menuOpen ? " sidebar-open" : ""}`}>
         <div className="sidebar-header">
           <span className="brand-mark">🪿</span>
           <span className="brand-name">Gooseboard</span>
@@ -29,19 +66,19 @@ export function Shell({
           <div className="nav-section-label">Dashboard</div>
           <ul className="nav-list">
             <li>
-              <a className="nav-item" href="/board">
+              <a className="nav-item" href="/board" onClick={closeMenu}>
                 <span className="nav-icon">🎛️</span>
                 <span className="nav-item-label">Soundboard</span>
               </a>
             </li>
             <li>
-              <a className="nav-item" href="#sounds">
+              <a className="nav-item" href="#sounds" onClick={closeMenu}>
                 <span className="nav-icon">🔊</span>
                 <span className="nav-item-label">Sound library</span>
               </a>
             </li>
             <li>
-              <a className="nav-item" href="#devices">
+              <a className="nav-item" href="#devices" onClick={closeMenu}>
                 <span className="nav-icon">📟</span>
                 <span className="nav-item-label">Devices</span>
               </a>
@@ -58,6 +95,7 @@ export function Shell({
                 href={buildBotInviteUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={closeMenu}
               >
                 <span className="nav-icon">➕</span>
                 <span className="nav-item-label">Add bot to a server</span>

@@ -277,87 +277,129 @@ button {
   min-width: 0;
 }
 
+/* ---------- mobile menu toggle (hamburger) ---------- */
+
+.menu-toggle {
+  display: none; /* shown only under the mobile breakpoint below */
+  position: fixed;
+  top: 10px;
+  left: 12px;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.menu-toggle:hover {
+  filter: brightness(1.1);
+}
+
+.menu-icon {
+  position: relative;
+  width: 18px;
+  height: 14px;
+}
+
+.menu-icon span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text-normal);
+  transition: transform 0.2s ease, opacity 0.2s ease, top 0.2s ease;
+}
+
+.menu-icon span:nth-child(1) {
+  top: 0;
+}
+
+.menu-icon span:nth-child(2) {
+  top: 6px;
+}
+
+.menu-icon span:nth-child(3) {
+  top: 12px;
+}
+
+/* Morphs the three bars into an X when open. */
+.menu-icon-open span:nth-child(1) {
+  top: 6px;
+  transform: rotate(45deg);
+}
+
+.menu-icon-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-icon-open span:nth-child(3) {
+  top: 6px;
+  transform: rotate(-45deg);
+}
+
+.drawer-backdrop {
+  display: none;
+}
+
 /* Below this, the fixed 260px sidebar-beside-content layout doesn't fit -
    it was forcing horizontal scroll and clipping content (e.g. the delete
-   button) on phones. Collapse the sidebar into a compact horizontal bar. */
+   button) on phones. The sidebar becomes an off-canvas drawer instead,
+   opened with the hamburger button above. Labels stay visible once open
+   (not icon-only) - hidden nav with no text hurts discoverability. */
 @media (max-width: 767px) {
   .shell {
     flex-direction: column;
     min-height: 100dvh;
   }
 
+  .menu-toggle {
+    display: flex;
+  }
+
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .drawer-backdrop-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .sidebar {
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    padding: 8px 12px;
-    padding-right: max(12px, env(safe-area-inset-right));
-    padding-left: max(12px, env(safe-area-inset-left));
-    gap: 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    position: fixed;
+    inset: 0 25vw 0 0;
+    z-index: 50;
+    width: auto;
+    max-width: 320px;
+    padding: 16px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-left: max(16px, env(safe-area-inset-left));
+    /* transform (not left/width) so this animates on the compositor thread
+       instead of triggering layout on every frame. */
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
   }
 
-  /* Flattens each section's wrapper div out of the flex layout, so
-     sidebar-header, both nav lists, and sidebar-footer all sit in one row
-     instead of stacking. */
-  .sidebar > div {
-    display: contents;
-  }
-
-  .sidebar-header {
-    padding: 0 8px 0 0;
-    border-bottom: none;
-    border-right: 1px solid var(--border);
-    margin-right: 4px;
-    flex-shrink: 0;
-  }
-
-  .sidebar-header .brand-name {
-    display: none;
-  }
-
-  .nav-section-label {
-    display: none;
-  }
-
-  .nav-list {
-    flex-direction: row;
-    flex-shrink: 0;
-  }
-
-  .nav-item {
-    padding: 8px;
-    white-space: nowrap;
-  }
-
-  .nav-item .nav-icon {
-    font-size: 18px;
-  }
-
-  /* Icon-only nav on the cramped bar; the pages themselves still have titles. */
-  .nav-item-label {
-    display: none;
-  }
-
-  .sidebar-footer {
-    margin-top: 0;
-    margin-left: auto;
-    border-top: none;
-    padding-top: 0;
-    flex-shrink: 0;
-  }
-
-  .user-card {
-    padding: 4px;
-  }
-
-  .user-card-name {
-    display: none;
+  .sidebar-open {
+    transform: translateX(0);
   }
 
   .topbar {
-    padding: 0 16px;
+    padding: 0 16px 0 64px;
   }
 
   .content {
