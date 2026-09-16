@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SERVER_URL } from "@/lib/serverApi";
@@ -15,7 +16,11 @@ async function confirmPairing(pairingCode: string, userId: string) {
   return res.ok;
 }
 
-export default async function PairPage({ searchParams }: { searchParams: { code?: string } }) {
+export default async function PairPage({
+  searchParams,
+}: {
+  searchParams: { code?: string; error?: string };
+}) {
   const session = await getServerSession(authOptions);
   const pairingCode = searchParams.code;
 
@@ -65,7 +70,12 @@ export default async function PairPage({ searchParams }: { searchParams: { code?
 
   async function submit() {
     "use server";
-    await confirmPairing(pairingCode!, user!.id);
+    const ok = await confirmPairing(pairingCode!, user!.id);
+
+    if (ok) {
+      redirect("/board");
+    }
+    redirect(`/pair?code=${encodeURIComponent(pairingCode!)}&error=${encodeURIComponent("That code is invalid or has expired. Check the device's screen for a new one.")}`);
   }
 
   return (
@@ -75,6 +85,7 @@ export default async function PairPage({ searchParams }: { searchParams: { code?
         <h1>Pair your Gooseboard</h1>
         <p>Confirm this pairing code to link the device to your account.</p>
         <div className="code-pill">{pairingCode}</div>
+        {searchParams.error && <p className="alert">{searchParams.error}</p>}
         <form action={submit}>
           <button className="btn btn-primary btn-block" type="submit">Confirm pairing</button>
         </form>
