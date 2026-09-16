@@ -601,6 +601,14 @@ input[type="radio"] {
   transform: scale(0.96);
 }
 
+/* Explicit pressed state, not just :active - :active is unreliable on touch
+   (some mobile browsers barely show it, or skip it entirely). */
+.board-tile-pressed {
+  transform: scale(0.96);
+  background: var(--bg-secondary); /* fallback for browsers without color-mix() */
+  background: color-mix(in srgb, var(--tile-color) 55%, var(--bg-primary));
+}
+
 .board-tile-playing {
   background: var(--bg-secondary); /* fallback for browsers without color-mix() */
   background: color-mix(in srgb, var(--tile-color) 42%, var(--bg-primary));

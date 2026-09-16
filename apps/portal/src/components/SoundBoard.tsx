@@ -13,6 +13,7 @@ type TileState = "idle" | "playing" | "error";
 
 export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
   const [states, setStates] = useState<Record<string, TileState>>({});
+  const [pressed, setPressed] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
 
   function setTile(id: string, state: TileState, resetAfterMs: number) {
@@ -20,9 +21,12 @@ export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
     setTimeout(() => setStates((current) => ({ ...current, [id]: "idle" })), resetAfterMs);
   }
 
+  function setPressedState(id: string, isPressed: boolean) {
+    setPressed((current) => ({ ...current, [id]: isPressed }));
+  }
+
   async function play(id: string) {
     setMessage(null);
-    setStates((current) => ({ ...current, [id]: "playing" }));
 
     try {
       const res = await fetch(`/api/play/${id}`, { method: "POST" });
@@ -32,7 +36,7 @@ export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
         throw new Error(body.error ?? "Playback failed");
       }
 
-      setTile(id, "playing", 500);
+      setTile(id, "playing", 400);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Playback failed");
       setTile(id, "error", 1500);
@@ -52,20 +56,32 @@ export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
       {message && <p className="alert board-alert">{message}</p>}
 
       <div className="board-grid">
-        {sounds.map((sound) => (
-          <button
-            key={sound.id}
-            type="button"
-            className={`board-tile board-tile-${states[sound.id] ?? "idle"}`}
-            style={{ ["--tile-color" as string]: sound.color }}
-            // Fire on press, not click: browsers hold back click on touch
-            // devices, and a soundboard should respond the instant it's hit.
-            onPointerDown={() => play(sound.id)}
-          >
-            <span className="board-tile-icon">{sound.icon ?? "🔊"}</span>
-            <span className="board-tile-name">{sound.displayName}</span>
-          </button>
-        ))}
+        {sounds.map((sound) => {
+          const isPressed = pressed[sound.id] ?? false;
+          const tileState = states[sound.id] ?? "idle";
+
+          return (
+            <button
+              key={sound.id}
+              type="button"
+              className={`board-tile board-tile-${tileState}${isPressed ? " board-tile-pressed" : ""}`}
+              style={{ ["--tile-color" as string]: sound.color }}
+              // click, not pointerdown: some mobile browsers cancel a
+              // pointerdown if they think a scroll might start, which made
+              // taps silently do nothing. Pointer down/up/cancel/leave still
+              // drive the instant "pressed" color change below, so the tile
+              // reacts the moment you touch it either way.
+              onPointerDown={() => setPressedState(sound.id, true)}
+              onPointerUp={() => setPressedState(sound.id, false)}
+              onPointerCancel={() => setPressedState(sound.id, false)}
+              onPointerLeave={() => setPressedState(sound.id, false)}
+              onClick={() => play(sound.id)}
+            >
+              <span className="board-tile-icon">{sound.icon ?? "🔊"}</span>
+              <span className="board-tile-name">{sound.displayName}</span>
+            </button>
+          );
+        })}
       </div>
     </>
   );
