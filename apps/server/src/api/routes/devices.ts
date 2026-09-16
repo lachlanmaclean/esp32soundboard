@@ -2,8 +2,13 @@ import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
 import { triggerPlayback, BotProxyError } from "../botClient";
-import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS } from "@gooseboard/shared";
-import type { DeviceRegisterRequest, DeviceRegisterResponse, TriggerSoundRequest } from "@gooseboard/shared";
+import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
+import type {
+  DeviceConfig,
+  DeviceRegisterRequest,
+  DeviceRegisterResponse,
+  TriggerSoundRequest,
+} from "@gooseboard/shared";
 
 export const devicesRouter = Router();
 
@@ -97,6 +102,42 @@ devicesRouter.post("/:cuid/unpair", async (req, res) => {
   });
 
   return res.status(204).send();
+});
+
+/**
+ * Polled by the CYD to render its button grid. `version` changes whenever a
+ * sound is edited, so the device can skip redrawing when nothing has changed.
+ */
+devicesRouter.get("/:cuid/config", async (req, res) => {
+  const device = await prisma.device.findUnique({ where: { cuid: req.params.cuid } });
+
+  if (!device) {
+    return res.status(404).json({ error: "Device not found" });
+  }
+  if (!device.userId) {
+    return res.status(409).json({ error: "Device not paired" });
+  }
+
+  const [sounds] = await Promise.all([
+    prisma.sound.findMany({
+      where: { userId: device.userId },
+      orderBy: { createdAt: "asc" },
+      take: MAX_SOUNDS_PER_USER,
+    }),
+    prisma.device.update({ where: { cuid: device.cuid }, data: { lastSeenAt: new Date() } }),
+  ]);
+
+  const config: DeviceConfig = {
+    version: sounds.reduce((latest, sound) => Math.max(latest, sound.updatedAt.getTime()), 0),
+    buttons: sounds.map((sound) => ({
+      id: sound.id,
+      displayName: sound.displayName,
+      color: sound.color,
+      icon: sound.icon,
+    })),
+  };
+
+  return res.json(config);
 });
 
 /** Called by the CYD when a button is tapped. */

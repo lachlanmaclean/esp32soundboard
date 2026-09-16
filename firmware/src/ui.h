@@ -1,0 +1,22 @@
+#pragma once
+
+#include "api.h"
+
+void uiBegin();
+
+/** Full-screen status message, used for booting/Wi-Fi/error states. */
+void uiShowStatus(const char *title, const String &detail);
+
+/** Wi-Fi setup instructions while the captive portal is running. */
+void uiShowSetupPortal(const String &apName);
+
+/** Pairing code plus a QR code pointing at the portal's /pair page. */
+void uiShowPairing(const String &pairingCode);
+
+void uiShowBoard(const BoardConfig &config);
+
+/** Index of the button at the given screen coordinates, or -1. */
+int uiButtonAt(const BoardConfig &config, int x, int y);
+
+/** Briefly highlights a button so a press feels acknowledged. */
+void uiFlashButton(const BoardConfig &config, int index, bool failed);

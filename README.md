@@ -18,7 +18,9 @@ in any server the bot shares with you.
 - `packages/db` — Prisma schema and generated client, shared by both apps.
 - `packages/shared` — TypeScript types shared across server, portal, and (in
   spirit) the firmware's JSON payloads.
-- `firmware` — PlatformIO/LovyanGFX firmware for the CYD (not yet scaffolded).
+- `firmware` — PlatformIO/LovyanGFX firmware for the CYD. See
+  [firmware/README.md](firmware/README.md) for wiring, flashing, and the
+  pairing flow.
 
 ## Local development
 
