@@ -30,17 +30,20 @@ export function Shell({
           <ul className="nav-list">
             <li>
               <a className="nav-item" href="/board">
-                <span className="nav-icon">🎛️</span> Soundboard
+                <span className="nav-icon">🎛️</span>
+                <span className="nav-item-label">Soundboard</span>
               </a>
             </li>
             <li>
               <a className="nav-item" href="#sounds">
-                <span className="nav-icon">🔊</span> Sound library
+                <span className="nav-icon">🔊</span>
+                <span className="nav-item-label">Sound library</span>
               </a>
             </li>
             <li>
               <a className="nav-item" href="#devices">
-                <span className="nav-icon">📟</span> Devices
+                <span className="nav-icon">📟</span>
+                <span className="nav-item-label">Devices</span>
               </a>
             </li>
           </ul>
@@ -56,7 +59,8 @@ export function Shell({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span className="nav-icon">➕</span> Add bot to a server
+                <span className="nav-icon">➕</span>
+                <span className="nav-item-label">Add bot to a server</span>
               </a>
             </li>
           </ul>

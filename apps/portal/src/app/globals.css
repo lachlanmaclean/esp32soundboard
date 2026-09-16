@@ -42,6 +42,7 @@ body {
   font-family: "gg sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.4;
+  overflow-x: hidden;
 }
 
 a {
@@ -273,6 +274,101 @@ button {
   gap: 28px;
   max-width: 960px;
   width: 100%;
+  min-width: 0;
+}
+
+/* Below this, the fixed 260px sidebar-beside-content layout doesn't fit -
+   it was forcing horizontal scroll and clipping content (e.g. the delete
+   button) on phones. Collapse the sidebar into a compact horizontal bar. */
+@media (max-width: 767px) {
+  .shell {
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 12px;
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(12px, env(safe-area-inset-left));
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Flattens each section's wrapper div out of the flex layout, so
+     sidebar-header, both nav lists, and sidebar-footer all sit in one row
+     instead of stacking. */
+  .sidebar > div {
+    display: contents;
+  }
+
+  .sidebar-header {
+    padding: 0 8px 0 0;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    margin-right: 4px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header .brand-name {
+    display: none;
+  }
+
+  .nav-section-label {
+    display: none;
+  }
+
+  .nav-list {
+    flex-direction: row;
+    flex-shrink: 0;
+  }
+
+  .nav-item {
+    padding: 8px;
+    white-space: nowrap;
+  }
+
+  .nav-item .nav-icon {
+    font-size: 18px;
+  }
+
+  /* Icon-only nav on the cramped bar; the pages themselves still have titles. */
+  .nav-item-label {
+    display: none;
+  }
+
+  .sidebar-footer {
+    margin-top: 0;
+    margin-left: auto;
+    border-top: none;
+    padding-top: 0;
+    flex-shrink: 0;
+  }
+
+  .user-card {
+    padding: 4px;
+  }
+
+  .user-card-name {
+    display: none;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .content {
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    gap: 20px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+  }
 }
 
 /* ---------- cards / sections ---------- */
@@ -454,6 +550,11 @@ input[type="radio"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.sound-tile-head .btn-danger {
+  flex-shrink: 0;
 }
 
 .sound-tile audio {
