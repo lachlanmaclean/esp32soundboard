@@ -1,7 +1,7 @@
 import express from "express";
 import { env } from "./env";
 import { startBot } from "./bot/client";
-import { playSoundForUser, TriggerError } from "./bot/trigger";
+import { playSoundForUser, findUserVoiceChannel, TriggerError } from "./bot/trigger";
 
 /**
  * Separate process from the public API, run with Docker's host networking.
@@ -32,6 +32,16 @@ async function main() {
       console.error("[bot] internal trigger failed", error);
       return res.status(500).json({ error: "Playback failed" });
     }
+  });
+
+  app.get("/internal/voice-status", (req, res) => {
+    const discordId = req.query.discordId as string | undefined;
+    if (!discordId) {
+      return res.status(400).json({ error: "discordId is required" });
+    }
+
+    const channel = findUserVoiceChannel(discordId);
+    return res.json({ inVoiceChannel: channel !== null });
   });
 
   app.listen(env.botInternalPort, () => {

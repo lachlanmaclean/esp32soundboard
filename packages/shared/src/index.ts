@@ -15,6 +15,8 @@ export interface DeviceConfig {
   buttons: SoundButtonConfig[];
   /** Bump whenever config changes, so the CYD can skip a re-render if unchanged. */
   version: number;
+  /** Whether the paired user is currently in a voice channel the bot can see. */
+  inVoiceChannel: boolean;
 }
 
 /** Body the CYD posts on first boot / whenever it has no paired user yet. */

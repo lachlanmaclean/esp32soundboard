@@ -122,6 +122,7 @@ ApiResult fetchConfig(BoardConfig &out) {
 
   out.count = 0;
   out.version = response["version"] | 0;
+  out.inVoiceChannel = response["inVoiceChannel"] | false;
 
   for (JsonObject button : response["buttons"].as<JsonArray>()) {
     if (out.count >= kMaxButtons) break;
@@ -154,6 +155,10 @@ ApiResult triggerSound(const String &soundId) {
   serializeJson(request, body);
 
   const int status = http.POST(body);
+  const String responseBody = status > 0 ? http.getString() : String();
   http.end();
+
+  Serial.printf("[api] POST /api/devices/trigger -> status %d, body: %s\n", status, responseBody.c_str());
+
   return statusToResult(status);
 }

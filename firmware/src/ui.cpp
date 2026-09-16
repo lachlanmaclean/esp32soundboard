@@ -82,6 +82,10 @@ void drawTile(const BoardConfig &config, int index, bool pressed, bool failed) {
 
 void uiBegin() {
   display.init();
+  // LovyanGFX rotation: 0/1/2/3 = 0°/90°/180°/270°, and 4/5/6/7 are the same
+  // four angles with a mirror added on top. Back to the original value while
+  // the bus/color/backlight fixes are verified in isolation - tune this
+  // separately once the image itself is stable.
   display.setRotation(1);  // landscape, 320x240
   display.setBrightness(200);
   display.fillScreen(kBgColor);
@@ -204,10 +208,17 @@ int uiButtonAt(const BoardConfig &config, int x, int y) {
   return -1;
 }
 
-void uiFlashButton(const BoardConfig &config, int index, bool failed) {
+void uiPressButton(const BoardConfig &config, int index) {
+  if (index < 0 || (size_t)index >= config.count) return;
+  drawTile(config, index, true, false);
+}
+
+void uiFinishButton(const BoardConfig &config, int index, bool failed) {
   if (index < 0 || (size_t)index >= config.count) return;
 
-  drawTile(config, index, !failed, failed);
-  delay(failed ? 600 : 120);
+  if (failed) {
+    drawTile(config, index, false, true);
+    delay(500);
+  }
   drawTile(config, index, false, false);
 }

@@ -12,6 +12,7 @@ namespace {
 enum class State {
   Connecting,
   Pairing,
+  WaitingForVoice,
   Board,
   Retrying,
 };
@@ -40,6 +41,12 @@ void enterBoard() {
   state = State::Board;
   lastPollAt = millis();
   uiShowBoard(board);
+}
+
+void enterWaitingForVoice() {
+  state = State::WaitingForVoice;
+  lastPollAt = millis();
+  uiShowStatus("Almost there", "Join a voice channel to see your sounds");
 }
 
 /** Shows a message and lets the main loop retry the check-in shortly after. */
@@ -73,7 +80,11 @@ void checkIn() {
   const ApiResult configResult = fetchConfig(board);
 
   if (configResult == ApiResult::Ok) {
-    enterBoard();
+    if (board.inVoiceChannel) {
+      enterBoard();
+    } else {
+      enterWaitingForVoice();
+    }
   } else if (configResult == ApiResult::NotPaired || configResult == ApiResult::NotFound) {
     // Unpaired in the gap between the two calls; the next check-in issues a
     // fresh code and drops us back into onboarding.
@@ -96,10 +107,29 @@ void pollConfig() {
 
   if (result != ApiResult::Ok) return;  // transient; keep showing what we have
 
-  if (fresh.version != board.version || fresh.count != board.count) {
-    board = fresh;
-    uiShowBoard(board);
+  const bool contentChanged = fresh.version != board.version || fresh.count != board.count;
+  board = fresh;
+
+  if (!board.inVoiceChannel) {
+    if (state != State::WaitingForVoice) enterWaitingForVoice();
+    return;
   }
+
+  if (state != State::Board || contentChanged) {
+    enterBoard();
+  }
+}
+
+const char *apiResultName(ApiResult result) {
+  switch (result) {
+    case ApiResult::Ok: return "Ok";
+    case ApiResult::NotPaired: return "NotPaired";
+    case ApiResult::NotFound: return "NotFound";
+    case ApiResult::NetworkError: return "NetworkError";
+    case ApiResult::ServerError: return "ServerError";
+    case ApiResult::ParseError: return "ParseError";
+  }
+  return "Unknown";
 }
 
 void handleTouch() {
@@ -112,10 +142,17 @@ void handleTouch() {
   lastTouchAt = now;
 
   const int index = uiButtonAt(board, x, y);
+  Serial.printf("[touch] x=%d y=%d -> button %d\n", x, y, index);
   if (index < 0) return;
 
+  // Draw the pressed state before making any network call, so it's instant
+  // rather than waiting on the round trip to the server.
+  uiPressButton(board, index);
+
   const ApiResult result = triggerSound(board.buttons[index].id);
-  uiFlashButton(board, index, result != ApiResult::Ok);
+  Serial.printf("[touch] trigger '%s' -> %s\n", board.buttons[index].name.c_str(), apiResultName(result));
+
+  uiFinishButton(board, index, result != ApiResult::Ok);
 }
 
 }  // namespace
@@ -154,6 +191,13 @@ void loop() {
     case State::Board:
       handleTouch();
       if (now - lastPollAt >= kConfigPollIntervalMs) pollConfig();
+      break;
+
+    case State::WaitingForVoice:
+      // Poll at the faster pairing cadence here, not the config interval -
+      // this screen only shows while waiting on the user to do something,
+      // so it should notice quickly once they join a voice channel.
+      if (now - lastPollAt >= kPairPollIntervalMs) pollConfig();
       break;
 
     case State::Pairing:

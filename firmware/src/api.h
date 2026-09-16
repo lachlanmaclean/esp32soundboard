@@ -13,6 +13,7 @@ struct BoardConfig {
   SoundButton buttons[kMaxButtons];
   size_t count = 0;
   int64_t version = -1;
+  bool inVoiceChannel = false;
 };
 
 enum class ApiResult {

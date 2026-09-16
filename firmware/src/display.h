@@ -1,15 +1,16 @@
 #pragma once
 
-// LovyanGFX wiring for the ESP32-2432S028R "Cheap Yellow Display": ILI9341
+// LovyanGFX wiring for the ESP32-2432S028R "Cheap Yellow Display": ST7789
 // panel on HSPI, XPT2046 resistive touch on its own VSPI bus, PWM backlight
-// on GPIO21. Board revisions vary — if the screen stays blank or touch is
-// mirrored, this is the file to adjust.
+// on GPIO21. Some batches of this board ship an ILI9341 instead despite
+// having the same model number - if colors/behavior look wrong, that's the
+// first thing to try swapping back.
 
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
 class GooseboardDisplay : public lgfx::LGFX_Device {
-  lgfx::Panel_ILI9341 _panel;
+  lgfx::Panel_ST7789 _panel;
   lgfx::Bus_SPI _bus;
   lgfx::Light_PWM _light;
   lgfx::Touch_XPT2046 _touch;
@@ -20,7 +21,7 @@ public:
       auto cfg = _bus.config();
       cfg.spi_host = HSPI_HOST;
       cfg.spi_mode = 0;
-      // 40MHz is often unstable on these boards' unshielded flying leads and
+      // 40MHz can be unstable on this board's unshielded flying leads and
       // shows up as garbled/scrambled pixels rather than a clean image.
       cfg.freq_write = 27000000;
       cfg.freq_read = 16000000;
@@ -48,8 +49,6 @@ public:
       cfg.dummy_read_pixel = 8;
       cfg.dummy_read_bits = 1;
       cfg.readable = true;
-      // Most ESP32-2432S028R units need this on despite the panel's default;
-      // leave off invert = true if colors still look wrong the other way.
       cfg.invert = true;
       cfg.rgb_order = false;
       cfg.dlen_16bit = false;
@@ -61,7 +60,9 @@ public:
       auto cfg = _light.config();
       cfg.pin_bl = 21;
       cfg.invert = false;
-      cfg.freq = 44100;
+      // 44100Hz is a common copy-pasted value, but ESP32's LEDC PWM isn't
+      // reliably stable there and it shows up as visible backlight flicker.
+      cfg.freq = 1000;
       cfg.pwm_channel = 7;
       _light.config(cfg);
       _panel.setLight(&_light);
@@ -69,13 +70,15 @@ public:
 
     {
       // Resistive panels vary unit to unit; these are typical for this board.
-      // Set GOOSEBOARD_CALIBRATE_TOUCH to run the on-screen calibration and
-      // print replacement values over serial.
+      // y_min/y_max are swapped (not just different values) to invert the
+      // touch panel's Y axis, which was mounted flipped relative to the
+      // display on this unit - touches near the top were reporting as if
+      // near the bottom.
       auto cfg = _touch.config();
       cfg.x_min = 300;
       cfg.x_max = 3900;
-      cfg.y_min = 200;
-      cfg.y_max = 3700;
+      cfg.y_min = 3700;
+      cfg.y_max = 200;
       cfg.pin_int = 36;
       cfg.bus_shared = false;
       cfg.offset_rotation = 0;

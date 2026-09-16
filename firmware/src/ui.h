@@ -18,5 +18,8 @@ void uiShowBoard(const BoardConfig &config);
 /** Index of the button at the given screen coordinates, or -1. */
 int uiButtonAt(const BoardConfig &config, int x, int y);
 
-/** Briefly highlights a button so a press feels acknowledged. */
-void uiFlashButton(const BoardConfig &config, int index, bool failed);
+/** Draws a button in its pressed state immediately on touch, before any network call. */
+void uiPressButton(const BoardConfig &config, int index);
+
+/** Shows the trigger's result briefly, then restores the button to normal. */
+void uiFinishButton(const BoardConfig &config, int index, bool failed);

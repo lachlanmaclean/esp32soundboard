@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
-import { triggerPlayback, BotProxyError } from "../botClient";
+import { triggerPlayback, isUserInVoiceChannel, BotProxyError } from "../botClient";
 import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 import type {
   DeviceConfig,
@@ -109,21 +109,25 @@ devicesRouter.post("/:cuid/unpair", async (req, res) => {
  * sound is edited, so the device can skip redrawing when nothing has changed.
  */
 devicesRouter.get("/:cuid/config", async (req, res) => {
-  const device = await prisma.device.findUnique({ where: { cuid: req.params.cuid } });
+  const device = await prisma.device.findUnique({
+    where: { cuid: req.params.cuid },
+    include: { user: true },
+  });
 
   if (!device) {
     return res.status(404).json({ error: "Device not found" });
   }
-  if (!device.userId) {
+  if (!device.userId || !device.user) {
     return res.status(409).json({ error: "Device not paired" });
   }
 
-  const [sounds] = await Promise.all([
+  const [sounds, inVoiceChannel] = await Promise.all([
     prisma.sound.findMany({
       where: { userId: device.userId },
       orderBy: { createdAt: "asc" },
       take: MAX_SOUNDS_PER_USER,
     }),
+    isUserInVoiceChannel(device.user.discordId),
     prisma.device.update({ where: { cuid: device.cuid }, data: { lastSeenAt: new Date() } }),
   ]);
 
@@ -135,6 +139,7 @@ devicesRouter.get("/:cuid/config", async (req, res) => {
       color: sound.color,
       icon: sound.icon,
     })),
+    inVoiceChannel,
   };
 
   return res.json(config);

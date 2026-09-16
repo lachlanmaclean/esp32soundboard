@@ -8,19 +8,14 @@ import { playSoundInChannel } from "./playback";
 export class TriggerError extends Error {}
 
 /**
- * Plays one of a user's sounds into whichever voice channel they're
- * currently sitting in, in the guild they've linked. No manual "join voice"
- * step needed — the bot follows the user.
- */
-/**
  * Discord only lets an account sit in one voice channel at a time, across
  * every server — so there's no need to pin a user to a particular guild.
- * Whichever channel they're in is where the sound goes.
+ * Whichever channel they're in is where a sound (or the CYD's grid) follows.
  *
  * Reads the local voice-state cache (kept current by the GuildVoiceStates
- * intent) rather than hitting Discord's API on every tap.
+ * intent) rather than hitting Discord's API on every call.
  */
-function findUserVoiceChannel(discordId: string) {
+export function findUserVoiceChannel(discordId: string) {
   for (const guild of discordClient.guilds.cache.values()) {
     const channel = guild.voiceStates.cache.get(discordId)?.channel;
     if (channel) return channel;
