@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <memory>
 
 #include "api.h"
 #include "config.h"
@@ -22,7 +26,26 @@ BoardConfig board;
 String pairingCode;
 
 uint32_t lastPollAt = 0;
-uint32_t lastTouchAt = 0;
+
+// Touch is edge-triggered (once per physical touch, not once per poll while
+// held), and the network call runs on its own task so it can never delay
+// the visual press/release - those track the finger directly.
+bool touchWasDown = false;
+int pressedIndex = -1;
+uint32_t lastTouchEdgeAt = 0;
+
+struct TriggerJob {
+  String soundId;
+  String name;
+  int index;
+};
+
+struct TriggerOutcome {
+  int index;
+  bool success;
+};
+
+QueueHandle_t triggerOutcomes = nullptr;
 
 /** Captive portal SSID, unique per board so several can be set up at once. */
 String setupApName() {
@@ -132,35 +155,116 @@ const char *apiResultName(ApiResult result) {
   return "Unknown";
 }
 
+/** Runs on its own task so a slow (or hung) network call never blocks touch handling. */
+void triggerTask(void *param) {
+  std::unique_ptr<TriggerJob> job(static_cast<TriggerJob *>(param));
+
+  const ApiResult result = triggerSound(job->soundId);
+  Serial.printf("[touch] trigger '%s' -> %s\n", job->name.c_str(), apiResultName(result));
+
+  const TriggerOutcome outcome{job->index, result == ApiResult::Ok};
+  xQueueSend(triggerOutcomes, &outcome, 0);
+
+  vTaskDelete(nullptr);
+}
+
+/** Applies any trigger results that have come back since the last check. */
+void drainTriggerOutcomes() {
+  TriggerOutcome outcome;
+  while (xQueueReceive(triggerOutcomes, &outcome, 0) == pdTRUE) {
+    if (!outcome.success) uiFlashError(board, outcome.index);
+  }
+}
+
 void handleTouch() {
   int32_t x = 0;
   int32_t y = 0;
-  if (!display.getTouch(&x, &y)) return;
-
+  const bool isDown = display.getTouch(&x, &y);
   const uint32_t now = millis();
-  if (now - lastTouchAt < kTouchDebounceMs) return;
-  lastTouchAt = now;
 
-  const int index = uiButtonAt(board, x, y);
-  Serial.printf("[touch] x=%d y=%d -> button %d\n", x, y, index);
-  if (index < 0) return;
+  if (isDown && !touchWasDown) {
+    // Rising edge: finger just made contact. A short debounce here filters
+    // contact-bounce noise, not deliberate re-taps (those need touch-up first).
+    if (now - lastTouchEdgeAt < kTouchEdgeDebounceMs) return;
+    lastTouchEdgeAt = now;
+    touchWasDown = true;
 
-  // Draw the pressed state before making any network call, so it's instant
-  // rather than waiting on the round trip to the server.
-  uiPressButton(board, index);
+    const int index = uiButtonAt(board, x, y);
+    Serial.printf("[touch] down x=%d y=%d -> button %d\n", x, y, index);
+    if (index < 0) return;
 
-  const ApiResult result = triggerSound(board.buttons[index].id);
-  Serial.printf("[touch] trigger '%s' -> %s\n", board.buttons[index].name.c_str(), apiResultName(result));
+    pressedIndex = index;
+    uiPressButton(board, index);
 
-  uiFinishButton(board, index, result != ApiResult::Ok);
+    auto *job = new TriggerJob{board.buttons[index].id, board.buttons[index].name, index};
+    xTaskCreate(triggerTask, "trigger", 6144, job, 1, nullptr);
+    return;
+  }
+
+  if (!isDown && touchWasDown) {
+    // Falling edge: finger lifted. Release the visual state right away,
+    // regardless of whether the background trigger has finished yet.
+    touchWasDown = false;
+    if (pressedIndex >= 0) {
+      uiReleaseButton(board, pressedIndex);
+      pressedIndex = -1;
+    }
+  }
 }
 
 }  // namespace
 
+#ifdef GOOSEBOARD_CALIBRATE_TOUCH
+/**
+ * Measures this exact panel's touch calibration interactively and prints it
+ * in a form to paste into kTouchCalibration (config.h). Applies it live too,
+ * so the rest of this boot (including the real button grid once paired) is
+ * already usable for a sanity check before hardcoding anything.
+ */
+void runTouchCalibration() {
+  static uint16_t calibration[8];
+
+  display.fillScreen(TFT_BLACK);
+  display.setTextColor(TFT_WHITE);
+  display.setTextDatum(top_left);
+  display.setCursor(8, 8);
+  display.println("Tap each crosshair as it appears...");
+  delay(1000);
+
+  display.calibrateTouch(calibration, TFT_WHITE, TFT_BLACK, 20);
+  display.setTouchCalibrate(calibration);
+
+  Serial.println("[calib] Done. Paste this into kTouchCalibration in config.h:");
+  Serial.print("static uint16_t kTouchCalibration[8] = {");
+  for (int i = 0; i < 8; i++) {
+    Serial.print(calibration[i]);
+    if (i < 7) Serial.print(", ");
+  }
+  Serial.println("};");
+
+  display.fillScreen(TFT_BLACK);
+  display.setCursor(8, 8);
+  display.println("Calibrated! Values on serial monitor.\n");
+  for (int i = 0; i < 8; i++) {
+    display.print(calibration[i]);
+    display.print(i < 7 ? ", " : "\n");
+  }
+  display.println("\nContinuing in 5s to test taps live...");
+  delay(5000);
+}
+#endif
+
 void setup() {
   Serial.begin(115200);
 
+  triggerOutcomes = xQueueCreate(4, sizeof(TriggerOutcome));
+
   uiBegin();
+
+#ifdef GOOSEBOARD_CALIBRATE_TOUCH
+  runTouchCalibration();
+#endif
+
   uiShowStatus("Gooseboard", "Starting up...");
 
   Serial.printf("[gooseboard] device id %s\n", deviceCuid().c_str());
@@ -190,6 +294,7 @@ void loop() {
   switch (state) {
     case State::Board:
       handleTouch();
+      drainTriggerOutcomes();
       if (now - lastPollAt >= kConfigPollIntervalMs) pollConfig();
       break;
 

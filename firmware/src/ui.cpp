@@ -82,12 +82,15 @@ void drawTile(const BoardConfig &config, int index, bool pressed, bool failed) {
 
 void uiBegin() {
   display.init();
-  // LovyanGFX rotation: 0/1/2/3 = 0°/90°/180°/270°, and 4/5/6/7 are the same
-  // four angles with a mirror added on top. Back to the original value while
-  // the bus/color/backlight fixes are verified in isolation - tune this
-  // separately once the image itself is stable.
   display.setRotation(1);  // landscape, 320x240
   display.setBrightness(200);
+
+#ifndef GOOSEBOARD_CALIBRATE_TOUCH
+  // In the calibration build, main.cpp measures fresh values and applies
+  // them itself instead of these hardcoded ones.
+  display.setTouchCalibrate(kTouchCalibration);
+#endif
+
   display.fillScreen(kBgColor);
 }
 
@@ -213,12 +216,14 @@ void uiPressButton(const BoardConfig &config, int index) {
   drawTile(config, index, true, false);
 }
 
-void uiFinishButton(const BoardConfig &config, int index, bool failed) {
+void uiReleaseButton(const BoardConfig &config, int index) {
   if (index < 0 || (size_t)index >= config.count) return;
+  drawTile(config, index, false, false);
+}
 
-  if (failed) {
-    drawTile(config, index, false, true);
-    delay(500);
-  }
+void uiFlashError(const BoardConfig &config, int index) {
+  if (index < 0 || (size_t)index >= config.count) return;
+  drawTile(config, index, false, true);
+  delay(400);
   drawTile(config, index, false, false);
 }

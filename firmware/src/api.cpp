@@ -4,6 +4,8 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <WiFi.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 namespace {
 
@@ -16,13 +18,44 @@ bool isHttps() { return kApiBase.startsWith("https://"); }
  * carries no secrets beyond its own id, and keeping a CA bundle current on a
  * device with no UI is its own maintenance problem. Traffic is still
  * encrypted, just not authenticated.
+ *
+ * One persistent client per caller, not a fresh one per call: paired with
+ * http.setReuse(true) below, this lets consecutive requests to the same host
+ * skip TLS's handshake entirely when the connection is still alive - a full
+ * ESP32 TLS handshake alone commonly costs 1-3+ seconds, which was showing
+ * up as every single button press hanging before the sound played.
+ *
+ * Two independent instances, not one shared between all three callers:
+ * triggerSound() runs on its own FreeRTOS task so it can't block touch
+ * handling, while registerDevice()/fetchConfig() run on the main loop task.
+ * A WiFiClient isn't safe to use from two tasks at once, so each side needs
+ * its own - otherwise a periodic config poll landing mid-trigger would race
+ * on the same socket.
  */
-std::unique_ptr<WiFiClient> makeClient() {
-  if (!isHttps()) return std::unique_ptr<WiFiClient>(new WiFiClient());
+WiFiClient &clientFor(WiFiClientSecure &secureClient, WiFiClient &plainClient, bool &secureInitialized) {
+  if (!isHttps()) return plainClient;
 
-  auto *secure = new WiFiClientSecure();
-  secure->setInsecure();
-  return std::unique_ptr<WiFiClient>(secure);
+  if (!secureInitialized) {
+    secureClient.setInsecure();
+    secureInitialized = true;
+  }
+  return secureClient;
+}
+
+/** Used only from the main loop task (registerDevice, fetchConfig). */
+WiFiClient &mainThreadClient() {
+  static WiFiClientSecure secureClient;
+  static WiFiClient plainClient;
+  static bool secureInitialized = false;
+  return clientFor(secureClient, plainClient, secureInitialized);
+}
+
+/** Used only from the background trigger task. */
+WiFiClient &triggerThreadClient() {
+  static WiFiClientSecure secureClient;
+  static WiFiClient plainClient;
+  static bool secureInitialized = false;
+  return clientFor(secureClient, plainClient, secureInitialized);
 }
 
 ApiResult statusToResult(int status) {
@@ -64,11 +97,11 @@ String pairingUrl(const String &pairingCode) {
 ApiResult registerDevice(bool &paired, String &pairingCode) {
   if (WiFi.status() != WL_CONNECTED) return ApiResult::NetworkError;
 
-  auto client = makeClient();
   HTTPClient http;
   http.setTimeout(10000);
+  http.setReuse(true);
 
-  if (!http.begin(*client, kApiBase + "/api/devices/register")) {
+  if (!http.begin(mainThreadClient(), kApiBase + "/api/devices/register")) {
     return ApiResult::NetworkError;
   }
   http.addHeader("Content-Type", "application/json");
@@ -100,11 +133,11 @@ ApiResult registerDevice(bool &paired, String &pairingCode) {
 ApiResult fetchConfig(BoardConfig &out) {
   if (WiFi.status() != WL_CONNECTED) return ApiResult::NetworkError;
 
-  auto client = makeClient();
   HTTPClient http;
   http.setTimeout(10000);
+  http.setReuse(true);
 
-  if (!http.begin(*client, kApiBase + "/api/devices/" + deviceCuid() + "/config")) {
+  if (!http.begin(mainThreadClient(), kApiBase + "/api/devices/" + deviceCuid() + "/config")) {
     return ApiResult::NetworkError;
   }
 
@@ -138,11 +171,20 @@ ApiResult fetchConfig(BoardConfig &out) {
 ApiResult triggerSound(const String &soundId) {
   if (WiFi.status() != WL_CONNECTED) return ApiResult::NetworkError;
 
-  auto client = makeClient();
+  // Each tap runs this on its own task so touch handling never blocks; if a
+  // second tap lands before the first request finishes, both would otherwise
+  // hit the same reused connection at once. Serializing here is free - a
+  // near-simultaneous second tap just waits briefly for the first request to
+  // finish, then reuses the same warm connection.
+  static SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
+  xSemaphoreTake(mutex, portMAX_DELAY);
+
   HTTPClient http;
   http.setTimeout(8000);
+  http.setReuse(true);
 
-  if (!http.begin(*client, kApiBase + "/api/devices/trigger")) {
+  if (!http.begin(triggerThreadClient(), kApiBase + "/api/devices/trigger")) {
+    xSemaphoreGive(mutex);
     return ApiResult::NetworkError;
   }
   http.addHeader("Content-Type", "application/json");
@@ -157,6 +199,8 @@ ApiResult triggerSound(const String &soundId) {
   const int status = http.POST(body);
   const String responseBody = status > 0 ? http.getString() : String();
   http.end();
+
+  xSemaphoreGive(mutex);
 
   Serial.printf("[api] POST /api/devices/trigger -> status %d, body: %s\n", status, responseBody.c_str());
 

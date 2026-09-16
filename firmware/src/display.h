@@ -69,16 +69,15 @@ public:
     }
 
     {
-      // Resistive panels vary unit to unit; these are typical for this board.
-      // y_min/y_max are swapped (not just different values) to invert the
-      // touch panel's Y axis, which was mounted flipped relative to the
-      // display on this unit - touches near the top were reporting as if
-      // near the bottom.
+      // Neutral full-range bounds - actual per-unit calibration is applied
+      // separately via setTouchCalibrate() in ui.cpp (see kTouchCalibration
+      // in config.h), which handles axis direction and swapping correctly
+      // instead of guessing individual min/max signs.
       auto cfg = _touch.config();
-      cfg.x_min = 300;
-      cfg.x_max = 3900;
-      cfg.y_min = 3700;
-      cfg.y_max = 200;
+      cfg.x_min = 0;
+      cfg.x_max = 4095;
+      cfg.y_min = 0;
+      cfg.y_max = 4095;
       cfg.pin_int = 36;
       cfg.bus_shared = false;
       cfg.offset_rotation = 0;

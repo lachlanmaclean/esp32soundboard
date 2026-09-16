@@ -20,7 +20,14 @@ static constexpr uint32_t kSetupPortalTimeoutSec = 300;
 static constexpr uint32_t kPairPollIntervalMs = 3000;
 // How often a paired device re-fetches its sound config.
 static constexpr uint32_t kConfigPollIntervalMs = 15000;
-// Ignore repeat touches within this window, so one press is one sound.
-static constexpr uint32_t kTouchDebounceMs = 350;
+// Filters contact-bounce noise right at touch-down/up, not a rate limit on
+// deliberate taps - presses are now edge-triggered (once per physical touch,
+// however long it's held), so this only needs to be short.
+static constexpr uint32_t kTouchEdgeDebounceMs = 40;
 
 static constexpr size_t kMaxButtons = 8;
+
+// Touch calibration for this exact panel, measured with the cyd_calibrate
+// build (see platformio.ini) via LovyanGFX's calibrateTouch(). Re-run that
+// build and replace these if the panel is ever swapped.
+static uint16_t kTouchCalibration[8] = {3620, 360, 3594, 3714, 494, 382, 498, 3698};
