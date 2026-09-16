@@ -84,11 +84,17 @@ function getOrCreatePlayer(guildId: string, connection: VoiceConnection) {
  * `preEncoded` files are already 48kHz stereo Opus, so they stream straight
  * through: no ffmpeg process to spawn, no Opus encoding. Anything else goes
  * down the slow path where @discordjs/voice shells out to ffmpeg.
+ *
+ * `volumePercent` only turns on inline volume mixing when it's not the 100
+ * (unchanged) default - that mixing needs to decode and re-encode Opus in
+ * real time, which is exactly the per-tap cost pre-encoding was added to
+ * avoid, so sounds left at their default volume stay on the fast path.
  */
 export async function playSoundInChannel(
   channel: VoiceBasedChannel,
   filePath: string,
   preEncoded: boolean,
+  volumePercent = 100,
 ) {
   const connection = getOrCreateConnection(channel);
 
@@ -101,9 +107,18 @@ export async function playSoundInChannel(
   }
 
   const player = getOrCreatePlayer(channel.guild.id, connection);
+  const needsVolumeMixing = volumePercent !== 100;
+
   const resource = preEncoded
-    ? createAudioResource(fs.createReadStream(filePath), { inputType: StreamType.OggOpus })
-    : createAudioResource(filePath);
+    ? createAudioResource(fs.createReadStream(filePath), {
+        inputType: StreamType.OggOpus,
+        inlineVolume: needsVolumeMixing,
+      })
+    : createAudioResource(filePath, { inlineVolume: needsVolumeMixing });
+
+  if (needsVolumeMixing) {
+    resource.volume?.setVolume(volumePercent / 100);
+  }
 
   player.play(resource);
 }

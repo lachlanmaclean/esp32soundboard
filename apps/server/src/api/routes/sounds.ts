@@ -82,6 +82,27 @@ soundsRouter.post("/:id/play", async (req, res) => {
   }
 });
 
+/** Called from the portal's volume slider on each sound. */
+soundsRouter.patch("/:id/volume", async (req, res) => {
+  const { volume } = req.body as { volume?: number };
+
+  if (typeof volume !== "number" || !Number.isFinite(volume) || volume < 0 || volume > 200) {
+    return res.status(400).json({ error: "volume must be a number between 0 and 200" });
+  }
+
+  const sound = await prisma.sound.findUnique({ where: { id: req.params.id } });
+  if (!sound) {
+    return res.status(404).json({ error: "Sound not found" });
+  }
+
+  const updated = await prisma.sound.update({
+    where: { id: sound.id },
+    data: { volume: Math.round(volume) },
+  });
+
+  return res.json(updated);
+});
+
 soundsRouter.delete("/:id", async (req, res) => {
   const sound = await prisma.sound.findUnique({ where: { id: req.params.id } });
   if (!sound) {

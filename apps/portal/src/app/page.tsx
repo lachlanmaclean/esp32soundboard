@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
+import { VolumeSlider } from "@/components/VolumeSlider";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
   const session = await getServerSession(authOptions);
@@ -121,6 +122,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
                   </form>
                 </div>
                 <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
                 <form action={playSoundAction}>
                   <input type="hidden" name="id" value={sound.id} />
                   <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>

@@ -31,6 +31,9 @@ model Sound {
   icon        String?
   // Path/URL to the stored audio file (local disk or object storage).
   audioUrl    String
+  // Playback gain as a percentage - 100 is unchanged, 0 is silent, up to 200
+  // (2x) for quiet clips. Applied at play time, not baked into the file.
+  volume      Int      @default(100)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

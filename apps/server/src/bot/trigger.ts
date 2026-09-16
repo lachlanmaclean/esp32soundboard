@@ -40,5 +40,5 @@ export async function playSoundForUser(userId: string, soundId: string) {
   const sourcePath = path.join(env.uploadDir, path.basename(sound.audioUrl));
   const opusPath = await ensureOpusFile(sourcePath);
 
-  await playSoundInChannel(channel, opusPath ?? sourcePath, opusPath !== null);
+  await playSoundInChannel(channel, opusPath ?? sourcePath, opusPath !== null, sound.volume);
 }

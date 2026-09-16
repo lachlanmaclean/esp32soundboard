@@ -604,6 +604,39 @@ input[type="radio"] {
   height: 32px;
 }
 
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volume-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+
+.volume-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--brand);
+  height: 20px;
+}
+
+.volume-value {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  width: 38px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.volume-value-pending {
+  color: var(--text-faint);
+}
+
 .delete-form {
   display: inline;
 }
