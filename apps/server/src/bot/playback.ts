@@ -11,12 +11,26 @@ import {
   AudioPlayer,
   NoSubscriberBehavior,
 } from "@discordjs/voice";
-import type { VoiceBasedChannel } from "discord.js";
+import { Events, type VoiceBasedChannel, type VoiceState } from "discord.js";
+import { discordClient } from "./client";
 
 // One player per guild, kept alive alongside the connection so rapid taps
 // reuse it instead of stacking subscriptions. Playing while already playing
 // interrupts the current sound, which is what a soundboard should do.
 const playersByGuild = new Map<string, AudioPlayer>();
+
+// Pending auto-leave timers, so a quick disconnect/reconnect (or someone
+// just switching channels) doesn't boot the bot out immediately.
+const EMPTY_CHANNEL_LEAVE_DELAY_MS = 60_000;
+const autoLeaveTimers = new Map<string, NodeJS.Timeout>();
+
+function cancelAutoLeave(guildId: string) {
+  const timer = autoLeaveTimers.get(guildId);
+  if (timer) {
+    clearTimeout(timer);
+    autoLeaveTimers.delete(guildId);
+  }
+}
 
 function attachStateLogging(connection: VoiceConnection) {
   connection.on("stateChange", (oldState, newState) => {
@@ -28,6 +42,7 @@ function attachStateLogging(connection: VoiceConnection) {
 export function joinFreshVoiceChannel(channel: VoiceBasedChannel) {
   getVoiceConnection(channel.guild.id)?.destroy();
   playersByGuild.delete(channel.guild.id);
+  cancelAutoLeave(channel.guild.id);
 
   const connection = joinVoiceChannel({
     channelId: channel.id,
@@ -127,4 +142,45 @@ export async function playSoundInChannel(
 export function leaveVoiceChannel(guildId: string) {
   getVoiceConnection(guildId)?.destroy();
   playersByGuild.delete(guildId);
+  cancelAutoLeave(guildId);
+}
+
+/** True if nobody but the bot itself remains in the voice channel it's connected to. */
+function isConnectedChannelEmpty(guildId: string, channel: VoiceBasedChannel) {
+  const connection = getVoiceConnection(guildId);
+  if (!connection || connection.joinConfig.channelId !== channel.id) return false;
+
+  return !channel.members.some((member) => !member.user.bot);
+}
+
+/**
+ * Leaves a voice channel once every human has been gone from it for a full
+ * delay, rather than the instant it empties — so a quick rejoin (or everyone
+ * briefly bouncing between channels) doesn't boot the bot out needlessly.
+ */
+export function registerAutoLeave() {
+  discordClient.on(Events.VoiceStateUpdate, (oldState: VoiceState, newState: VoiceState) => {
+    const guildId = oldState.guild.id;
+
+    // Someone (re)joined the bot's channel: call off any pending leave.
+    if (newState.channel && isSameChannelAsBot(guildId, newState.channel) && !newState.member?.user.bot) {
+      cancelAutoLeave(guildId);
+      return;
+    }
+
+    const channel = oldState.channel;
+    if (!channel || !isConnectedChannelEmpty(guildId, channel)) return;
+    if (autoLeaveTimers.has(guildId)) return;
+
+    const timer = setTimeout(() => {
+      autoLeaveTimers.delete(guildId);
+      if (isConnectedChannelEmpty(guildId, channel)) leaveVoiceChannel(guildId);
+    }, EMPTY_CHANNEL_LEAVE_DELAY_MS);
+
+    autoLeaveTimers.set(guildId, timer);
+  });
+}
+
+function isSameChannelAsBot(guildId: string, channel: VoiceBasedChannel) {
+  return getVoiceConnection(guildId)?.joinConfig.channelId === channel.id;
 }
