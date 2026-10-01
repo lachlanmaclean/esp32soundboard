@@ -6,6 +6,9 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "opusscript": "^0.1.1"
+  },
   "scripts": {
     "dev:server": "npm run dev --workspace=apps/server",
     "dev:portal": "npm run dev --workspace=apps/portal",
