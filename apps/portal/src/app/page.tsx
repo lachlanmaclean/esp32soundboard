@@ -200,28 +200,28 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         {sounds.length === 0 ? (
           <div className="empty-state">No sounds yet. Upload one below to get started.</div>
         ) : (
-          <div className="sound-grid">
+          <div className="sound-list">
             {sounds.map((sound) => (
-              <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
-                <div className="sound-tile-head">
-                  <span className="sound-tile-name" style={{ color: sound.color }}>
-                    <span>{sound.icon ?? "🔊"}</span>
-                    <span>{sound.displayName}</span>
-                  </span>
+              <div key={sound.id} className="sound-row" style={{ borderLeftColor: sound.color }}>
+                <span className="sound-row-name" style={{ color: sound.color }}>
+                  <span>{sound.icon ?? "🔊"}</span>
+                  <span>{sound.displayName}</span>
+                </span>
+                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
+                <div className="sound-row-actions">
+                  <form action={setBoardAction}>
+                    <input type="hidden" name="id" value={sound.id} />
+                    <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
+                    <button className="btn" type="submit">
+                      {sound.onBoard ? "On soundboard ✕ Remove" : "Add to soundboard"}
+                    </button>
+                  </form>
                   <form action={deleteSoundAction} className="delete-form">
                     <input type="hidden" name="id" value={sound.id} />
                     <button className="btn-danger" type="submit" title="Delete">✕</button>
                   </form>
                 </div>
-                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
-                <form action={setBoardAction}>
-                  <input type="hidden" name="id" value={sound.id} />
-                  <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
-                  <button className="btn btn-block" type="submit">
-                    {sound.onBoard ? "On soundboard ✕ Remove" : "Add to soundboard"}
-                  </button>
-                </form>
               </div>
             ))}
           </div>

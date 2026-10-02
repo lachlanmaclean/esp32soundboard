@@ -604,6 +604,59 @@ input[type="radio"] {
   height: 32px;
 }
 
+.sound-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sound-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+.sound-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sound-row audio {
+  height: 32px;
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.sound-row .volume-row {
+  flex: 0 0 160px;
+}
+
+.sound-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sound-row-actions .btn {
+  white-space: nowrap;
+}
+
 .volume-row {
   display: flex;
   align-items: center;
