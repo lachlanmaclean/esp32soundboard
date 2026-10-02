@@ -423,10 +423,6 @@ button {
     flex-basis: 100%;
     justify-content: space-between;
   }
-
-  .sound-row .volume-row {
-    max-width: none;
-  }
 }
 
 /* ---------- cards / sections ---------- */
@@ -663,12 +659,6 @@ input[type="radio"] {
   min-width: 0;
 }
 
-.sound-row .volume-row {
-  flex: 1 1 100px;
-  min-width: 80px;
-  max-width: 200px;
-}
-
 .sound-row-actions {
   display: flex;
   align-items: center;
@@ -702,12 +692,6 @@ input[type="radio"] {
 
 .icon-btn:active {
   transform: scale(0.96);
-}
-
-.icon-btn-active {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: #fff;
 }
 
 .icon-btn-danger {

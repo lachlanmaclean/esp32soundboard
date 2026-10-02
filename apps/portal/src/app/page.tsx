@@ -8,6 +8,7 @@ import { LIBRARY_SOUND_LIMIT, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { VolumeSlider } from "@/components/VolumeSlider";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
+import { UploadForm } from "@/components/UploadForm";
 import { MemeLibrary } from "@/components/MemeLibrary";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
@@ -181,14 +182,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         )}
 
         {sounds.length < LIBRARY_SOUND_LIMIT && boardSounds.length < BOARD_SOUND_LIMIT && (
-          <form action={uploadSoundAction} className="field-row">
-            <input type="hidden" name="addToBoard" value="true" />
-            <input type="text" name="displayName" placeholder="Name" required />
-            <input type="color" name="color" defaultValue="#5865F2" required />
-            <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />
-            <input type="file" name="audio" accept="audio/mpeg,audio/wav,audio/ogg" required />
-            <button className="btn btn-primary" type="submit">Upload to board</button>
-          </form>
+          <UploadForm action={uploadSoundAction} addToBoard buttonLabel="Upload to board" />
         )}
       </section>
 
@@ -211,21 +205,8 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
                 <div className="sound-row-controls">
                   <SoundPreviewButton src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-                  <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
 
                   <div className="sound-row-actions">
-                    <form action={setBoardAction}>
-                      <input type="hidden" name="id" value={sound.id} />
-                      <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
-                      <button
-                        className={`icon-btn${sound.onBoard ? " icon-btn-active" : ""}`}
-                        type="submit"
-                        title={sound.onBoard ? "Remove from soundboard" : "Add to soundboard"}
-                        aria-label={sound.onBoard ? "Remove from soundboard" : "Add to soundboard"}
-                      >
-                        {sound.onBoard ? "✓" : "+"}
-                      </button>
-                    </form>
                     <form action={deleteSoundAction} className="delete-form">
                       <input type="hidden" name="id" value={sound.id} />
                       <button className="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">
@@ -240,14 +221,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         )}
 
         {sounds.length < LIBRARY_SOUND_LIMIT && (
-          <form action={uploadSoundAction} className="field-row">
-            <input type="hidden" name="addToBoard" value="false" />
-            <input type="text" name="displayName" placeholder="Name" required />
-            <input type="color" name="color" defaultValue="#5865F2" required />
-            <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />
-            <input type="file" name="audio" accept="audio/mpeg,audio/wav,audio/ogg" required />
-            <button className="btn btn-primary" type="submit">Upload</button>
-          </form>
+          <UploadForm action={uploadSoundAction} addToBoard={false} buttonLabel="Upload" />
         )}
       </section>
 

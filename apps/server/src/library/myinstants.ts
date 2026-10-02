@@ -49,20 +49,31 @@ export function isMyinstantsAudioUrl(url: string) {
  * to curl sidesteps that rather than trying to out-fingerprint Cloudflare.
  */
 async function curlGet(url: string): Promise<string> {
-  const { stdout } = await execFileAsync("curl", [
-    "-sS",
-    "-A",
-    BROWSER_USER_AGENT,
-    "-H",
-    "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "-H",
-    "Accept-Language: en-US,en;q=0.9",
-    "-H",
-    `Referer: ${MYINSTANTS_ORIGIN}/`,
-    "--fail",
-    url,
-  ]);
-  return stdout;
+  try {
+    const { stdout } = await execFileAsync("curl", [
+      "-sS",
+      "-A",
+      BROWSER_USER_AGENT,
+      "-H",
+      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "-H",
+      "Accept-Language: en-US,en;q=0.9",
+      "-H",
+      `Referer: ${MYINSTANTS_ORIGIN}/`,
+      "--fail",
+      url,
+    ]);
+    return stdout;
+  } catch (error) {
+    // Node's execFile error carries curl's own stderr/exit code (and ENOENT
+    // specifically means curl itself isn't installed in this container) -
+    // log it in full server-side, since the generic "Search failed" the
+    // browser sees on its own isn't enough to tell those apart.
+    const code = (error as NodeJS.ErrnoException)?.code;
+    const stderr = (error as { stderr?: string })?.stderr;
+    console.error(`[myinstants] curl request to ${url} failed`, { code, stderr, error });
+    throw error;
+  }
 }
 
 function parseInstants(html: string): LibrarySound[] {

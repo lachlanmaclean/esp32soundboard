@@ -21,9 +21,13 @@ export function MemeLibrary() {
 
   useEffect(() => {
     fetch("/api/library/trending")
-      .then((res) => res.json())
-      .then((body) => setTrending(Array.isArray(body) ? body : []))
-      .catch(() => {});
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        console.log("[meme-library] trending", { status: res.status, body });
+        if (!res.ok) throw new Error(body.error ?? `Trending failed (${res.status})`);
+        setTrending(Array.isArray(body) ? body : []);
+      })
+      .catch((error) => console.error("[meme-library] trending failed", error));
   }, []);
 
   function setRowState(mp3Url: string, state: RowState, resetAfterMs: number) {
@@ -41,11 +45,18 @@ export function MemeLibrary() {
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/library/search?q=${encodeURIComponent(value)}`);
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "Search failed");
+      const url = `/api/library/search?q=${encodeURIComponent(value)}`;
+      console.log("[meme-library] search request", { url, value });
+      const res = await fetch(url);
+      const body = await res.json().catch((parseError) => {
+        console.error("[meme-library] search response was not valid JSON", parseError);
+        return {};
+      });
+      console.log("[meme-library] search response", { status: res.status, ok: res.ok, body });
+      if (!res.ok) throw new Error(body.error ?? `Search failed (${res.status})`);
       setResults(body);
     } catch (error) {
+      console.error("[meme-library] search failed", error);
       setMessage(error instanceof Error ? error.message : "Search failed");
       setResults([]);
     } finally {
@@ -63,19 +74,20 @@ export function MemeLibrary() {
     setMessage(null);
 
     try {
+      console.log("[meme-library] play request", sound);
       const res = await fetch("/api/library/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mp3Url: sound.mp3Url }),
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Playback failed");
-      }
+      const body = await res.json().catch(() => ({}));
+      console.log("[meme-library] play response", { status: res.status, ok: res.ok, body });
+      if (!res.ok) throw new Error(body.error ?? `Playback failed (${res.status})`);
 
       setRowState(sound.mp3Url, "playing", 400);
     } catch (error) {
+      console.error("[meme-library] play failed", error);
       setMessage(error instanceof Error ? error.message : "Playback failed");
       setRowState(sound.mp3Url, "error", 1500);
     }
