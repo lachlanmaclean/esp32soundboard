@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface LibrarySound {
   name: string;
@@ -13,10 +13,18 @@ type RowState = "idle" | "playing" | "error";
 export function MemeLibrary() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LibrarySound[]>([]);
+  const [trending, setTrending] = useState<LibrarySound[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    fetch("/api/library/trending")
+      .then((res) => res.json())
+      .then((body) => setTrending(Array.isArray(body) ? body : []))
+      .catch(() => {});
+  }, []);
 
   function setRowState(mp3Url: string, state: RowState, resetAfterMs: number) {
     setRowStates((current) => ({ ...current, [mp3Url]: state }));
@@ -73,6 +81,9 @@ export function MemeLibrary() {
     }
   }
 
+  const showingSearch = query.trim().length > 0;
+  const shownResults = showingSearch ? results : trending;
+
   return (
     <>
       <input
@@ -84,16 +95,18 @@ export function MemeLibrary() {
         style={{ width: "100%" }}
       />
 
+      {!showingSearch && trending.length > 0 && <div className="nav-section-label">Trending</div>}
+
       {message && <p className="alert">{message}</p>}
       {loading && <p className="empty-state">Searching...</p>}
 
-      {!loading && query.trim() && results.length === 0 && (
+      {!loading && showingSearch && results.length === 0 && (
         <div className="empty-state">No results for &quot;{query}&quot;.</div>
       )}
 
-      {results.length > 0 && (
+      {!loading && shownResults.length > 0 && (
         <div className="sound-grid">
-          {results.map((sound) => {
+          {shownResults.map((sound) => {
             const state = rowStates[sound.mp3Url] ?? "idle";
             return (
               <div key={sound.mp3Url} className={`sound-tile board-tile-${state}`}>

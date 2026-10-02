@@ -65,16 +65,7 @@ async function curlGet(url: string): Promise<string> {
   return stdout;
 }
 
-export async function searchMyinstants(query: string): Promise<LibrarySound[]> {
-  const url = `${MYINSTANTS_ORIGIN}/en/search/?name=${encodeURIComponent(query)}`;
-
-  let html: string;
-  try {
-    html = await curlGet(url);
-  } catch (error) {
-    throw new Error(`myinstants search failed: ${error instanceof Error ? error.message : error}`);
-  }
-
+function parseInstants(html: string): LibrarySound[] {
   const results: LibrarySound[] = [];
 
   for (const match of html.matchAll(RESULT_PATTERN)) {
@@ -87,4 +78,23 @@ export async function searchMyinstants(query: string): Promise<LibrarySound[]> {
   }
 
   return results;
+}
+
+export async function searchMyinstants(query: string): Promise<LibrarySound[]> {
+  const url = `${MYINSTANTS_ORIGIN}/en/search/?name=${encodeURIComponent(query)}`;
+
+  try {
+    return parseInstants(await curlGet(url));
+  } catch (error) {
+    throw new Error(`myinstants search failed: ${error instanceof Error ? error.message : error}`);
+  }
+}
+
+/** The site's US trending page - same markup as search, just no query. Used for browse/suggestions. */
+export async function fetchTrendingMyinstants(): Promise<LibrarySound[]> {
+  try {
+    return parseInstants(await curlGet(`${MYINSTANTS_ORIGIN}/en/index/us/`));
+  } catch (error) {
+    throw new Error(`myinstants trending failed: ${error instanceof Error ? error.message : error}`);
+  }
 }
