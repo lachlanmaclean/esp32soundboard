@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { searchMyinstants, fetchTrendingMyinstants, isMyinstantsAudioUrl, LibrarySound } from "../../library/myinstants";
+import { importMyinstantsSound } from "../../library/import";
 import { triggerExternalPlayback, BotProxyError } from "../botClient";
+import { prisma } from "../../db";
+import { LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 export const libraryRouter = Router();
 
@@ -99,5 +102,29 @@ libraryRouter.post("/play", async (req, res) => {
     }
     console.error("[library] playback failed", error);
     return res.status(500).json({ error: "Playback failed" });
+  }
+});
+
+/** Downloads a myinstants clip into the user's own library. */
+libraryRouter.post("/import", async (req, res) => {
+  const { userId, mp3Url, displayName } = req.body as { userId?: string; mp3Url?: string; displayName?: string };
+  if (!userId || !mp3Url || !displayName) {
+    return res.status(400).json({ error: "userId, mp3Url and displayName are required" });
+  }
+  if (!isMyinstantsAudioUrl(mp3Url)) {
+    return res.status(400).json({ error: "mp3Url must be a myinstants.com sound" });
+  }
+
+  const libraryCount = await prisma.sound.count({ where: { userId } });
+  if (libraryCount >= LIBRARY_SOUND_LIMIT) {
+    return res.status(409).json({ error: `Library is full (max ${LIBRARY_SOUND_LIMIT} sounds) - delete one first` });
+  }
+
+  try {
+    const sound = await importMyinstantsSound(userId, mp3Url, displayName);
+    return res.status(201).json(sound);
+  } catch (error) {
+    console.error("[library] import failed", error);
+    return res.status(502).json({ error: "Import failed" });
   }
 });

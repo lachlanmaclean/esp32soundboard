@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface LibrarySound {
   name: string;
@@ -8,12 +9,16 @@ interface LibrarySound {
   detailUrl: string;
 }
 
-type RowState = "idle" | "playing" | "error";
+type RowState = "idle" | "playing" | "added" | "error";
+
+const PAGE_SIZE = 10;
 
 export function MemeLibrary() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LibrarySound[]>([]);
   const [trending, setTrending] = useState<LibrarySound[]>([]);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
@@ -66,6 +71,7 @@ export function MemeLibrary() {
 
   function onQueryChange(value: string) {
     setQuery(value);
+    setPage(0);
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => runSearch(value), 400);
   }
@@ -93,8 +99,34 @@ export function MemeLibrary() {
     }
   }
 
+  async function addToLibrary(sound: LibrarySound) {
+    setMessage(null);
+
+    try {
+      console.log("[meme-library] import request", sound);
+      const res = await fetch("/api/library/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mp3Url: sound.mp3Url, displayName: sound.name }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      console.log("[meme-library] import response", { status: res.status, ok: res.ok, body });
+      if (!res.ok) throw new Error(body.error ?? `Could not add to library (${res.status})`);
+
+      setRowState(sound.mp3Url, "added", 1500);
+      router.refresh();
+    } catch (error) {
+      console.error("[meme-library] import failed", error);
+      setMessage(error instanceof Error ? error.message : "Could not add to library");
+      setRowState(sound.mp3Url, "error", 1500);
+    }
+  }
+
   const showingSearch = query.trim().length > 0;
   const shownResults = showingSearch ? results : trending;
+  const pageCount = Math.ceil(shownResults.length / PAGE_SIZE) || 1;
+  const pageResults = shownResults.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <>
@@ -116,22 +148,48 @@ export function MemeLibrary() {
         <div className="empty-state">No results for &quot;{query}&quot;.</div>
       )}
 
-      {!loading && shownResults.length > 0 && (
-        <div className="sound-grid">
-          {shownResults.map((sound) => {
+      {!loading && pageResults.length > 0 && (
+        <div className="sound-list">
+          {pageResults.map((sound) => {
             const state = rowStates[sound.mp3Url] ?? "idle";
             return (
-              <div key={sound.mp3Url} className={`sound-tile board-tile-${state}`}>
-                <div className="sound-tile-head">
-                  <span className="sound-tile-name">{sound.name}</span>
+              <div key={sound.mp3Url} className="sound-row">
+                <span className="sound-row-name">{sound.name}</span>
+                <div className="sound-row-actions">
+                  <button className="btn btn-success" type="button" onClick={() => play(sound)}>
+                    ▶ Play
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={state === "added"}
+                    onClick={() => addToLibrary(sound)}
+                  >
+                    {state === "added" ? "✓ Added" : "+ Add to Library"}
+                  </button>
                 </div>
-                <audio controls src={sound.mp3Url} />
-                <button className="btn btn-success btn-block" type="button" onClick={() => play(sound)}>
-                  ▶ Play in Discord
-                </button>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && shownResults.length > PAGE_SIZE && (
+        <div className="pagination">
+          <button className="btn" type="button" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+            ← Prev
+          </button>
+          <span className="card-subtext">
+            Page {page + 1} of {pageCount}
+          </span>
+          <button
+            className="btn"
+            type="button"
+            disabled={page >= pageCount - 1}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next →
+          </button>
         </div>
       )}
     </>

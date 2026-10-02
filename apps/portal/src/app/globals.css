@@ -705,6 +705,14 @@ button.sound-tile-empty:hover {
   margin-left: auto;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 4px;
+}
+
 /* Small round icon-only control, used where a text button would be noise
    repeated across every row of a list. */
 .icon-btn {
