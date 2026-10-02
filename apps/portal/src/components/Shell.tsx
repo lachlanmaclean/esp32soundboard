@@ -78,6 +78,12 @@ export function Shell({
               </a>
             </li>
             <li>
+              <a className="nav-item" href="#meme-library" onClick={closeMenu}>
+                <span className="nav-icon">🤣</span>
+                <span className="nav-item-label">Meme library</span>
+              </a>
+            </li>
+            <li>
               <a className="nav-item" href="#devices" onClick={closeMenu}>
                 <span className="nav-icon">📟</span>
                 <span className="nav-item-label">Devices</span>

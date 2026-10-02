@@ -7,6 +7,7 @@ import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { VolumeSlider } from "@/components/VolumeSlider";
+import { MemeLibrary } from "@/components/MemeLibrary";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
   const session = await getServerSession(authOptions);
@@ -141,6 +142,13 @@ export default async function HomePage({ searchParams }: { searchParams: { error
             <button className="btn btn-primary" type="submit">Upload</button>
           </form>
         )}
+      </section>
+
+      <section className="card" id="meme-library">
+        <div className="card-header">
+          <h2>🤣 Meme library</h2>
+        </div>
+        <MemeLibrary />
       </section>
 
       <section className="card" id="devices">

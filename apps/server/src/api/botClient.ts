@@ -21,6 +21,19 @@ export async function triggerPlayback(userId: string, soundId: string): Promise<
   }
 }
 
+export async function triggerExternalPlayback(userId: string, mp3Url: string): Promise<void> {
+  const res = await fetch(`${env.botInternalUrl}/internal/trigger-external`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, mp3Url }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new BotProxyError(res.status, body.error ?? "Playback failed");
+  }
+}
+
 /** Best-effort: if the bot is unreachable, assume not-in-voice rather than failing the whole config fetch. */
 export async function isUserInVoiceChannel(discordId: string): Promise<boolean> {
   try {
