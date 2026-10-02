@@ -9,6 +9,7 @@ import { Shell } from "@/components/Shell";
 import { VolumeSlider } from "@/components/VolumeSlider";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { UploadForm } from "@/components/UploadForm";
+import { AddToBoardSlot } from "@/components/AddToBoardSlot";
 import { MemeLibrary } from "@/components/MemeLibrary";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
@@ -49,6 +50,8 @@ export default async function HomePage({ searchParams }: { searchParams: { error
   const sounds = await prisma.sound.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
   const devices = await prisma.device.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
   const boardSounds = sounds.filter((sound) => sound.onBoard);
+  const libraryOnlySounds = sounds.filter((sound) => !sound.onBoard);
+  const openBoardSlots = BOARD_SOUND_LIMIT - boardSounds.length;
 
   async function uploadSoundAction(formData: FormData) {
     "use server";
@@ -126,60 +129,33 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           </span>
         </div>
 
-        {boardSounds.length === 0 ? (
-          <div className="empty-state">
-            Nothing on your soundboard yet. Add a sound from your library below, or upload one straight here.
-          </div>
-        ) : (
-          <div className="sound-grid">
-            {boardSounds.map((sound) => (
-              <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
-                <div className="sound-tile-head">
-                  <span className="sound-tile-name" style={{ color: sound.color }}>
-                    <span>{sound.icon ?? "🔊"}</span>
-                    <span>{sound.displayName}</span>
-                  </span>
-                </div>
-                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
-                <form action={playSoundAction}>
-                  <input type="hidden" name="id" value={sound.id} />
-                  <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
-                </form>
-                <form action={setBoardAction}>
-                  <input type="hidden" name="id" value={sound.id} />
-                  <input type="hidden" name="onBoard" value="false" />
-                  <button className="btn btn-block" type="submit">Remove from board</button>
-                </form>
+        <div className="sound-grid">
+          {boardSounds.map((sound) => (
+            <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
+              <div className="sound-tile-head">
+                <span className="sound-tile-name" style={{ color: sound.color }}>
+                  <span>{sound.icon ?? "🔊"}</span>
+                  <span>{sound.displayName}</span>
+                </span>
               </div>
-            ))}
-          </div>
-        )}
-
-        {sounds.length > boardSounds.length && boardSounds.length < BOARD_SOUND_LIMIT && (
-          <>
-            <div className="nav-section-label">Add from your library</div>
-            <div className="sound-grid">
-              {sounds
-                .filter((sound) => !sound.onBoard)
-                .map((sound) => (
-                  <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
-                    <div className="sound-tile-head">
-                      <span className="sound-tile-name" style={{ color: sound.color }}>
-                        <span>{sound.icon ?? "🔊"}</span>
-                        <span>{sound.displayName}</span>
-                      </span>
-                    </div>
-                    <form action={setBoardAction}>
-                      <input type="hidden" name="id" value={sound.id} />
-                      <input type="hidden" name="onBoard" value="true" />
-                      <button className="btn btn-primary btn-block" type="submit">Add to board</button>
-                    </form>
-                  </div>
-                ))}
+              <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+              <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
+              <form action={playSoundAction}>
+                <input type="hidden" name="id" value={sound.id} />
+                <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
+              </form>
+              <form action={setBoardAction}>
+                <input type="hidden" name="id" value={sound.id} />
+                <input type="hidden" name="onBoard" value="false" />
+                <button className="btn btn-block" type="submit">Remove from board</button>
+              </form>
             </div>
-          </>
-        )}
+          ))}
+
+          {Array.from({ length: openBoardSlots }, (_, i) => (
+            <AddToBoardSlot key={i} action={setBoardAction} options={libraryOnlySounds} />
+          ))}
+        </div>
 
         {sounds.length < LIBRARY_SOUND_LIMIT && boardSounds.length < BOARD_SOUND_LIMIT && (
           <UploadForm action={uploadSoundAction} addToBoard buttonLabel="Upload to board" />

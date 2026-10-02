@@ -595,6 +595,44 @@ input[type="radio"] {
   gap: 8px;
 }
 
+/* An open soundboard slot. Shares .sound-tile's footprint so the grid stays
+   even whether a slot is filled or not - border is dashed and no accent
+   color, since there's no sound here to color-code yet. */
+.sound-tile-empty {
+  align-items: center;
+  justify-content: center;
+  border-style: dashed;
+  border-left-style: dashed;
+  border-color: var(--border);
+  border-left-color: var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  min-height: 140px;
+}
+
+button.sound-tile-empty:hover {
+  border-color: var(--text-faint);
+  border-left-color: var(--text-faint);
+  color: var(--text-normal);
+}
+
+.sound-tile-plus {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-faint);
+}
+
+.sound-tile-empty select {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-normal);
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
 .sound-tile-name {
   display: flex;
   align-items: center;
