@@ -7,6 +7,7 @@ import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { LIBRARY_SOUND_LIMIT, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { VolumeSlider } from "@/components/VolumeSlider";
+import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { MemeLibrary } from "@/components/MemeLibrary";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
@@ -207,20 +208,31 @@ export default async function HomePage({ searchParams }: { searchParams: { error
                   <span>{sound.icon ?? "🔊"}</span>
                   <span>{sound.displayName}</span>
                 </span>
-                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
-                <div className="sound-row-actions">
-                  <form action={setBoardAction}>
-                    <input type="hidden" name="id" value={sound.id} />
-                    <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
-                    <button className="btn" type="submit">
-                      {sound.onBoard ? "On soundboard ✕ Remove" : "Add to soundboard"}
-                    </button>
-                  </form>
-                  <form action={deleteSoundAction} className="delete-form">
-                    <input type="hidden" name="id" value={sound.id} />
-                    <button className="btn-danger" type="submit" title="Delete">✕</button>
-                  </form>
+
+                <div className="sound-row-controls">
+                  <SoundPreviewButton src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                  <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
+
+                  <div className="sound-row-actions">
+                    <form action={setBoardAction}>
+                      <input type="hidden" name="id" value={sound.id} />
+                      <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
+                      <button
+                        className={`icon-btn${sound.onBoard ? " icon-btn-active" : ""}`}
+                        type="submit"
+                        title={sound.onBoard ? "Remove from soundboard" : "Add to soundboard"}
+                        aria-label={sound.onBoard ? "Remove from soundboard" : "Add to soundboard"}
+                      >
+                        {sound.onBoard ? "✓" : "+"}
+                      </button>
+                    </form>
+                    <form action={deleteSoundAction} className="delete-form">
+                      <input type="hidden" name="id" value={sound.id} />
+                      <button className="icon-btn icon-btn-danger" type="submit" title="Delete" aria-label="Delete">
+                        ✕
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             ))}

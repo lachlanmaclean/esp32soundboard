@@ -411,6 +411,22 @@ button {
   .card-header {
     flex-wrap: wrap;
   }
+
+  /* Name and controls each get their own full-width line instead of
+     squeezing onto one row - holds the single-line layout until it
+     genuinely stops fitting, then collapses in one clean step. */
+  .sound-row-name {
+    flex-basis: 100%;
+  }
+
+  .sound-row-controls {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+
+  .sound-row .volume-row {
+    max-width: none;
+  }
 }
 
 /* ---------- cards / sections ---------- */
@@ -614,7 +630,8 @@ input[type="radio"] {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  row-gap: 10px;
+  column-gap: 24px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -629,32 +646,79 @@ input[type="radio"] {
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
-  min-width: 140px;
+  flex: 1 1 140px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sound-row audio {
-  height: 32px;
-  flex: 1 1 200px;
-  min-width: 160px;
+/* The controls group (preview, volume, actions) is one visual unit, spaced
+   well apart from the name - space does the grouping, not a divider line. */
+.sound-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .sound-row .volume-row {
-  flex: 0 0 160px;
+  flex: 1 1 100px;
+  min-width: 80px;
+  max-width: 200px;
 }
 
 .sound-row-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
   margin-left: auto;
 }
 
-.sound-row-actions .btn {
-  white-space: nowrap;
+/* Small round icon-only control, used where a text button would be noise
+   repeated across every row of a list. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.icon-btn:hover {
+  filter: brightness(1.15);
+}
+
+.icon-btn:active {
+  transform: scale(0.96);
+}
+
+.icon-btn-active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.icon-btn-danger {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.icon-btn-danger:hover {
+  color: var(--red);
+  background: rgba(242, 63, 67, 0.1);
+  border-color: var(--red);
 }
 
 .volume-row {
