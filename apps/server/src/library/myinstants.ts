@@ -1,14 +1,6 @@
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
+import { env } from "../env";
 
 const MYINSTANTS_ORIGIN = "https://www.myinstants.com";
-
-// Plain fetches without a browser User-Agent get a 403 from Cloudflare;
-// a normal Chrome UA passes straight through with no JS challenge.
-const BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
 
 export interface LibrarySound {
   name: string;
@@ -43,50 +35,37 @@ export function isMyinstantsAudioUrl(url: string) {
 }
 
 /**
- * Node's own fetch (undici) gets a 403 from Cloudflare here even with a full
- * set of matching browser headers - almost certainly TLS/HTTP client
- * fingerprinting, since an identical request via curl succeeds. Shelling out
- * to curl sidesteps that rather than trying to out-fingerprint Cloudflare.
+ * Both Node's own fetch and plain curl get a flat 403 from Cloudflare here -
+ * confirmed to be IP-reputation based (this host's hosting-provider IP),
+ * not a header or TLS-fingerprint problem, since curl with fully matching
+ * browser headers still gets rejected. FlareSolverr runs an actual headless
+ * browser instance and proxies the request through it, which clears
+ * Cloudflare's checks the same way a real visitor's browser would.
  */
-async function curlGet(url: string): Promise<string> {
+async function flareGet(url: string): Promise<string> {
+  let res: Response;
   try {
-    const { stdout } = await execFileAsync(
-      "curl",
-      [
-        "-sS",
-        "-A",
-        BROWSER_USER_AGENT,
-        "-H",
-        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "-H",
-        "Accept-Language: en-US,en;q=0.9",
-        "-H",
-        `Referer: ${MYINSTANTS_ORIGIN}/`,
-        "--fail",
-        // Without these, a stalled connection (e.g. outbound blocked from
-        // this host) hangs indefinitely - the request then dies to the edge
-        // proxy's own timeout instead, which returns an opaque HTML 502
-        // with no error detail at all. Failing fast here means a real,
-        // loggable error instead.
-        "--connect-timeout", "5",
-        "--max-time", "10",
-        url,
-      ],
-      // Backstop in case curl itself ignores its own flags - SIGTERM's it
-      // rather than letting the request hang the whole process indefinitely.
-      { timeout: 12_000 },
-    );
-    return stdout;
+    res = await fetch(`${env.flaresolverrUrl}/v1`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cmd: "request.get", url, maxTimeout: 20_000 }),
+      // Comfortably above FlareSolverr's own maxTimeout, so its JSON error
+      // (if any) surfaces before this request aborts first.
+      signal: AbortSignal.timeout(25_000),
+    });
   } catch (error) {
-    // Node's execFile error carries curl's own stderr/exit code (and ENOENT
-    // specifically means curl itself isn't installed in this container) -
-    // log it in full server-side, since the generic "Search failed" the
-    // browser sees on its own isn't enough to tell those apart.
-    const code = (error as NodeJS.ErrnoException)?.code;
-    const stderr = (error as { stderr?: string })?.stderr;
-    console.error(`[myinstants] curl request to ${url} failed`, { code, stderr, error });
-    throw error;
+    console.error(`[myinstants] could not reach flaresolverr for ${url}`, error);
+    throw new Error(`could not reach flaresolverr: ${error instanceof Error ? error.message : error}`);
   }
+
+  const body = await res.json().catch(() => ({}));
+
+  if (!res.ok || body.status !== "ok") {
+    console.error(`[myinstants] flaresolverr request to ${url} failed`, { status: res.status, body });
+    throw new Error(`flaresolverr request failed: ${body.message ?? res.status}`);
+  }
+
+  return body.solution?.response ?? "";
 }
 
 function parseInstants(html: string): LibrarySound[] {
@@ -108,7 +87,7 @@ export async function searchMyinstants(query: string): Promise<LibrarySound[]> {
   const url = `${MYINSTANTS_ORIGIN}/en/search/?name=${encodeURIComponent(query)}`;
 
   try {
-    return parseInstants(await curlGet(url));
+    return parseInstants(await flareGet(url));
   } catch (error) {
     throw new Error(`myinstants search failed: ${error instanceof Error ? error.message : error}`);
   }
@@ -117,7 +96,7 @@ export async function searchMyinstants(query: string): Promise<LibrarySound[]> {
 /** The site's US trending page - same markup as search, just no query. Used for browse/suggestions. */
 export async function fetchTrendingMyinstants(): Promise<LibrarySound[]> {
   try {
-    return parseInstants(await curlGet(`${MYINSTANTS_ORIGIN}/en/index/us/`));
+    return parseInstants(await flareGet(`${MYINSTANTS_ORIGIN}/en/index/us/`));
   } catch (error) {
     throw new Error(`myinstants trending failed: ${error instanceof Error ? error.message : error}`);
   }

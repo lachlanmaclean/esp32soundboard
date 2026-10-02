@@ -22,4 +22,8 @@ export const env = {
   botInternalUrl: process.env.BOT_INTERNAL_URL ?? "http://localhost:4100",
   // Used by the bot process itself to know which port to listen on.
   botInternalPort: Number(process.env.BOT_INTERNAL_PORT ?? 4100),
+  // FlareSolverr instance used to get past Cloudflare's bot checks when
+  // scraping myinstants.com - plain requests from this host's IP get a flat
+  // 403 regardless of headers.
+  flaresolverrUrl: process.env.FLARESOLVERR_URL ?? "http://localhost:8191",
 };

@@ -4,10 +4,8 @@
 # caused voice connections to hang even with correct networking otherwise.
 FROM node:22-bookworm-slim AS base
 # openssl: Prisma's query engine. ffmpeg: transcodes uploaded mp3/wav/ogg to
-# Opus for @discordjs/voice. curl: fetches myinstants.com search results -
-# Node's own fetch gets Cloudflare-blocked there even with matching headers
-# (TLS/client fingerprinting), curl doesn't.
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ffmpeg ca-certificates curl \
+# Opus for @discordjs/voice.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 

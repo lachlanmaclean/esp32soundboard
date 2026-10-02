@@ -41,6 +41,7 @@ services:
       PORTAL_URL: ${PORTAL_URL}
       UPLOAD_DIR: /data/uploads
       BOT_INTERNAL_URL: http://host.docker.internal:4100
+      FLARESOLVERR_URL: http://flaresolverr:8191
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -51,6 +52,19 @@ services:
       - postgres
       - migrate
       - bot
+      - flaresolverr
+
+  # Runs myinstants.com scrape requests through a real headless browser so
+  # they clear Cloudflare's bot checks - plain curl/fetch from this host's
+  # IP gets a flat 403 (datacenter IP reputation), regardless of headers.
+  # Internal only; `server` is the only thing that talks to it.
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: info
+    expose:
+      - "8191"
 
   # Discord bot + voice playback, run with host networking. Discord voice
   # needs direct outbound UDP for its IP-discovery handshake, which the
