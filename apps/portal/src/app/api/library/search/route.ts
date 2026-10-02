@@ -11,8 +11,18 @@ export async function GET(request: Request) {
   }
 
   const query = new URL(request.url).searchParams.get("q") ?? "";
-  const res = await fetch(`${SERVER_URL}/api/library/search?q=${encodeURIComponent(query)}`);
 
-  const body = await res.json().catch(() => ({}));
-  return NextResponse.json(body, { status: res.status });
+  try {
+    // 15s: a little above the server's own ~12s curl ceiling, so a real
+    // scrape timeout there surfaces as its JSON error instead of this
+    // request aborting first with a generic one.
+    const res = await fetch(`${SERVER_URL}/api/library/search?q=${encodeURIComponent(query)}`, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body = await res.json().catch(() => ({}));
+    return NextResponse.json(body, { status: res.status });
+  } catch (error) {
+    console.error("[api/library/search] request to server failed", error);
+    return NextResponse.json({ error: "Search timed out" }, { status: 504 });
+  }
 }

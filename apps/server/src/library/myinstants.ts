@@ -50,19 +50,32 @@ export function isMyinstantsAudioUrl(url: string) {
  */
 async function curlGet(url: string): Promise<string> {
   try {
-    const { stdout } = await execFileAsync("curl", [
-      "-sS",
-      "-A",
-      BROWSER_USER_AGENT,
-      "-H",
-      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "-H",
-      "Accept-Language: en-US,en;q=0.9",
-      "-H",
-      `Referer: ${MYINSTANTS_ORIGIN}/`,
-      "--fail",
-      url,
-    ]);
+    const { stdout } = await execFileAsync(
+      "curl",
+      [
+        "-sS",
+        "-A",
+        BROWSER_USER_AGENT,
+        "-H",
+        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "-H",
+        "Accept-Language: en-US,en;q=0.9",
+        "-H",
+        `Referer: ${MYINSTANTS_ORIGIN}/`,
+        "--fail",
+        // Without these, a stalled connection (e.g. outbound blocked from
+        // this host) hangs indefinitely - the request then dies to the edge
+        // proxy's own timeout instead, which returns an opaque HTML 502
+        // with no error detail at all. Failing fast here means a real,
+        // loggable error instead.
+        "--connect-timeout", "5",
+        "--max-time", "10",
+        url,
+      ],
+      // Backstop in case curl itself ignores its own flags - SIGTERM's it
+      // rather than letting the request hang the whole process indefinitely.
+      { timeout: 12_000 },
+    );
     return stdout;
   } catch (error) {
     // Node's execFile error carries curl's own stderr/exit code (and ENOENT
