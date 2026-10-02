@@ -72,6 +72,12 @@ export function Shell({
               </a>
             </li>
             <li>
+              <a className="nav-item" href="#soundboard" onClick={closeMenu}>
+                <span className="nav-icon">🎛️</span>
+                <span className="nav-item-label">Soundboard setup</span>
+              </a>
+            </li>
+            <li>
               <a className="nav-item" href="#sounds" onClick={closeMenu}>
                 <span className="nav-icon">🔊</span>
                 <span className="nav-item-label">Sound library</span>

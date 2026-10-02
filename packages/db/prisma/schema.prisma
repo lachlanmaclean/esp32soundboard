@@ -21,7 +21,9 @@ model User {
   devices Device[]
 }
 
-// One of up to 8 sounds in a user's shared library (not per-server, not per-device).
+// One of up to 30 sounds in a user's library (not per-server, not per-device).
+// A subset (onBoard = true, capped separately at BOARD_SOUND_LIMIT) is what
+// actually shows up as a button on the CYD grid / web soundboard.
 model Sound {
   id          String   @id @default(cuid())
   userId      String
@@ -29,8 +31,13 @@ model Sound {
   displayName String
   color       String
   icon        String?
-  // Path/URL to the stored audio file (local disk or object storage).
+  // Path/URL to the stored audio file (local disk or object storage). May be
+  // a hardlink into originals/ shared with other Sound rows of the same hash.
   audioUrl    String
+  // SHA-256 of the raw uploaded bytes, used to dedupe identical uploads
+  // (even across users) onto one physical file instead of storing copies.
+  fileHash    String
+  onBoard     Boolean  @default(false)
   // Playback gain as a percentage - 100 is unchanged, 0 is silent, up to 200
   // (2x) for quiet clips. Applied at play time, not baked into the file.
   volume      Int      @default(100)
@@ -38,6 +45,7 @@ model Sound {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+  @@index([fileHash])
 }
 
 // A physical CYD device. Devices can exist unpaired (userId null) between

@@ -2,6 +2,7 @@ import path from "path";
 import { prisma } from "../db";
 import { env } from "../env";
 import { ensureOpusFile } from "../audio";
+import { canonicalAudioPath } from "../storage";
 import { discordClient } from "./client";
 import { playSoundInChannel } from "./playback";
 
@@ -37,7 +38,12 @@ export async function playSoundForUser(userId: string, soundId: string) {
     throw new TriggerError("Join a voice channel in a server Gooseboard is in, then try again");
   }
 
-  const sourcePath = path.join(env.uploadDir, path.basename(sound.audioUrl));
+  // Sounds uploaded before file-hash dedup existed have no hash (migrated
+  // to "", which never matches a real one) - their audio still lives at the
+  // plain upload path rather than a hardlink into originals/.
+  const sourcePath = sound.fileHash
+    ? canonicalAudioPath(sound.fileHash, path.extname(sound.audioUrl))
+    : path.join(env.uploadDir, path.basename(sound.audioUrl));
   const opusPath = await ensureOpusFile(sourcePath);
 
   await playSoundInChannel(channel, opusPath ?? sourcePath, opusPath !== null, sound.volume);

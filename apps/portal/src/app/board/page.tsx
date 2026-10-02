@@ -43,7 +43,7 @@ export default async function BoardPage() {
   }
 
   const sounds = await prisma.sound.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, onBoard: true },
     orderBy: { createdAt: "asc" },
   });
 

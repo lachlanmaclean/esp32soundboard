@@ -2,7 +2,7 @@ import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
 import { triggerPlayback, isUserInVoiceChannel, BotProxyError } from "../botClient";
-import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS, MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
+import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
 import type {
   DeviceConfig,
   DeviceRegisterRequest,
@@ -123,9 +123,9 @@ devicesRouter.get("/:cuid/config", async (req, res) => {
 
   const [sounds, inVoiceChannel] = await Promise.all([
     prisma.sound.findMany({
-      where: { userId: device.userId },
+      where: { userId: device.userId, onBoard: true },
       orderBy: { createdAt: "asc" },
-      take: MAX_SOUNDS_PER_USER,
+      take: BOARD_SOUND_LIMIT,
     }),
     isUserInVoiceChannel(device.user.discordId),
     prisma.device.update({ where: { cuid: device.cuid }, data: { lastSeenAt: new Date() } }),

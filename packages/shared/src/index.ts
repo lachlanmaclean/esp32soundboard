@@ -1,4 +1,8 @@
-export const MAX_SOUNDS_PER_USER = 8;
+// How many sounds a user can upload in total, regardless of how many are
+// actually on their soundboard. Separate from BOARD_SOUND_LIMIT below.
+export const LIBRARY_SOUND_LIMIT = 30;
+// Physical button-grid size on the CYD, and the web soundboard's matching cap.
+export const BOARD_SOUND_LIMIT = 8;
 export const PAIRING_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export const PAIRING_CODE_LENGTH = 6;
 

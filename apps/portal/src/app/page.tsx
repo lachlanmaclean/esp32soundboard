@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
-import { MAX_SOUNDS_PER_USER } from "@gooseboard/shared";
+import { LIBRARY_SOUND_LIMIT, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { VolumeSlider } from "@/components/VolumeSlider";
 import { MemeLibrary } from "@/components/MemeLibrary";
@@ -46,6 +46,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
   const sounds = await prisma.sound.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
   const devices = await prisma.device.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
+  const boardSounds = sounds.filter((sound) => sound.onBoard);
 
   async function uploadSoundAction(formData: FormData) {
     "use server";
@@ -56,6 +57,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     const icon = formData.get("icon") as string;
     if (icon) upstream.append("icon", icon);
     upstream.append("audio", formData.get("audio") as File);
+    upstream.append("addToBoard", formData.get("addToBoard") === "true" ? "true" : "false");
 
     const res = await fetch(`${SERVER_URL}/api/sounds`, { method: "POST", body: upstream });
     if (!res.ok) {
@@ -86,6 +88,22 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     }
   }
 
+  async function setBoardAction(formData: FormData) {
+    "use server";
+    const id = formData.get("id") as string;
+    const onBoard = formData.get("onBoard") === "true";
+    const res = await fetch(`${SERVER_URL}/api/sounds/${id}/board`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ onBoard }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      redirect(`/?error=${encodeURIComponent(body.error ?? "Could not update soundboard")}`);
+    }
+    revalidatePath("/");
+  }
+
   async function unpairDeviceAction(formData: FormData) {
     "use server";
     const cuid = formData.get("cuid") as string;
@@ -98,12 +116,85 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿">
       {searchParams.error && <p className="alert">{searchParams.error}</p>}
 
+      <section className="card" id="soundboard">
+        <div className="card-header">
+          <h2>🎛️ Soundboard setup</h2>
+          <span className="count-badge">
+            <a href="/board">Open soundboard →</a> &nbsp; {boardSounds.length}/{BOARD_SOUND_LIMIT}
+          </span>
+        </div>
+
+        {boardSounds.length === 0 ? (
+          <div className="empty-state">
+            Nothing on your soundboard yet. Add a sound from your library below, or upload one straight here.
+          </div>
+        ) : (
+          <div className="sound-grid">
+            {boardSounds.map((sound) => (
+              <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
+                <div className="sound-tile-head">
+                  <span className="sound-tile-name" style={{ color: sound.color }}>
+                    <span>{sound.icon ?? "🔊"}</span>
+                    <span>{sound.displayName}</span>
+                  </span>
+                </div>
+                <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
+                <form action={playSoundAction}>
+                  <input type="hidden" name="id" value={sound.id} />
+                  <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
+                </form>
+                <form action={setBoardAction}>
+                  <input type="hidden" name="id" value={sound.id} />
+                  <input type="hidden" name="onBoard" value="false" />
+                  <button className="btn btn-block" type="submit">Remove from board</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sounds.length > boardSounds.length && boardSounds.length < BOARD_SOUND_LIMIT && (
+          <>
+            <div className="nav-section-label">Add from your library</div>
+            <div className="sound-grid">
+              {sounds
+                .filter((sound) => !sound.onBoard)
+                .map((sound) => (
+                  <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
+                    <div className="sound-tile-head">
+                      <span className="sound-tile-name" style={{ color: sound.color }}>
+                        <span>{sound.icon ?? "🔊"}</span>
+                        <span>{sound.displayName}</span>
+                      </span>
+                    </div>
+                    <form action={setBoardAction}>
+                      <input type="hidden" name="id" value={sound.id} />
+                      <input type="hidden" name="onBoard" value="true" />
+                      <button className="btn btn-primary btn-block" type="submit">Add to board</button>
+                    </form>
+                  </div>
+                ))}
+            </div>
+          </>
+        )}
+
+        {sounds.length < LIBRARY_SOUND_LIMIT && boardSounds.length < BOARD_SOUND_LIMIT && (
+          <form action={uploadSoundAction} className="field-row">
+            <input type="hidden" name="addToBoard" value="true" />
+            <input type="text" name="displayName" placeholder="Name" required />
+            <input type="color" name="color" defaultValue="#5865F2" required />
+            <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />
+            <input type="file" name="audio" accept="audio/mpeg,audio/wav,audio/ogg" required />
+            <button className="btn btn-primary" type="submit">Upload to board</button>
+          </form>
+        )}
+      </section>
+
       <section className="card" id="sounds">
         <div className="card-header">
           <h2>🔊 Sound library</h2>
-          <span className="count-badge">
-            <a href="/board">Open soundboard →</a> &nbsp; {sounds.length}/{MAX_SOUNDS_PER_USER}
-          </span>
+          <span className="count-badge">{sounds.length}/{LIBRARY_SOUND_LIMIT}</span>
         </div>
 
         {sounds.length === 0 ? (
@@ -124,17 +215,21 @@ export default async function HomePage({ searchParams }: { searchParams: { error
                 </div>
                 <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
                 <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
-                <form action={playSoundAction}>
+                <form action={setBoardAction}>
                   <input type="hidden" name="id" value={sound.id} />
-                  <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
+                  <input type="hidden" name="onBoard" value={(!sound.onBoard).toString()} />
+                  <button className="btn btn-block" type="submit">
+                    {sound.onBoard ? "On soundboard ✕ Remove" : "Add to soundboard"}
+                  </button>
                 </form>
               </div>
             ))}
           </div>
         )}
 
-        {sounds.length < MAX_SOUNDS_PER_USER && (
+        {sounds.length < LIBRARY_SOUND_LIMIT && (
           <form action={uploadSoundAction} className="field-row">
+            <input type="hidden" name="addToBoard" value="false" />
             <input type="text" name="displayName" placeholder="Name" required />
             <input type="color" name="color" defaultValue="#5865F2" required />
             <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />
