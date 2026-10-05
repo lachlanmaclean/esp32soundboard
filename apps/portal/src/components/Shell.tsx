@@ -104,20 +104,20 @@ export function Shell({
               </a>
             </li>
             <li>
-              <a className="nav-item" href="/#sounds" onClick={closeMenu}>
+              <a className="nav-item" href="/library" onClick={closeMenu}>
                 <span className="nav-icon">🔊</span>
                 <span className="nav-item-label">Sound library</span>
               </a>
             </li>
             <li>
-              <a className="nav-item" href="/#meme-library" onClick={closeMenu}>
+              <a className="nav-item" href="/meme-library" onClick={closeMenu}>
                 <span className="nav-icon">🤣</span>
                 <span className="nav-item-label">Meme library</span>
               </a>
             </li>
             {isPro && (
               <li>
-                <a className="nav-item" href="/#devices" onClick={closeMenu}>
+                <a className="nav-item" href="/devices" onClick={closeMenu}>
                   <span className="nav-icon">📟</span>
                   <span className="nav-item-label">Devices</span>
                 </a>

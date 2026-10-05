@@ -484,6 +484,48 @@ button {
   color: var(--text-muted);
 }
 
+/* ---------- home hub ---------- */
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  color: var(--text-normal);
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.hub-card:hover {
+  border-color: var(--brand);
+}
+
+.hub-card:active {
+  transform: scale(0.98);
+}
+
+.hub-card-icon {
+  font-size: 28px;
+}
+
+.hub-card-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.hub-card-subtext {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* ---------- forms / inputs ---------- */
 
 .field-row {

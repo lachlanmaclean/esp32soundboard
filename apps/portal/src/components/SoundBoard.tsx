@@ -46,7 +46,7 @@ export function SoundBoard({ sounds }: { sounds: BoardSound[] }) {
   if (sounds.length === 0) {
     return (
       <div className="empty-state">
-        No sounds yet. Add some from the <a href="/">dashboard</a> first.
+        No sounds yet. Add some from the <a href="/designer">Designer</a> first.
       </div>
     );
   }
