@@ -1307,32 +1307,48 @@ button.sound-tile-empty:hover {
   gap: 8px;
 }
 
-.policy-row-form {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Header and each row are separate elements (a plain div and a <form>), but
+   share this exact column template so they line up - the previous version
+   used a real <table> for the header and a flex row inside a colspan'd <td>
+   for each row, two unrelated layout systems that never actually aligned. */
+.policy-grid {
+  display: grid;
+  grid-template-columns: 160px 90px 90px 90px 100px 80px 1fr;
+  column-gap: 10px;
+}
+
+.policy-grid-header,
+.policy-grid-row {
+  display: contents;
+}
+
+.policy-grid-header span {
   padding: 8px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
   border-bottom: 1px solid var(--border);
 }
 
-.policy-row-form input[type="number"] {
-  width: 64px;
+.policy-grid-row input,
+.policy-grid-row > span {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+
+.policy-grid-row input[type="text"],
+.policy-grid-row input[type="number"] {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-normal);
-  padding: 6px;
   font-size: 13px;
-}
-
-.policy-row-name {
-  width: 140px;
-  flex-shrink: 0;
+  margin: 4px 0;
 }
 
 .policy-row-default {
-  width: 70px;
-  flex-shrink: 0;
   font-size: 12px;
   color: var(--green);
   font-weight: 600;
