@@ -65,8 +65,13 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      # Not service_healthy: the bot's healthcheck only passes once it's
+      # finished logging into Discord, which is an external dependency that
+      # can be slow or flaky. Gating the API's own startup on that turned
+      # one slow Discord login into the whole app being unreachable -
+      # service_started (just "the container exists") is enough here.
       bot:
-        condition: service_healthy
+        condition: service_started
       flaresolverr:
         condition: service_started
 
