@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 
 interface LibrarySound {
   name: string;
@@ -156,8 +157,9 @@ export function MemeLibrary() {
               <div key={sound.mp3Url} className="sound-row">
                 <span className="sound-row-name">{sound.name}</span>
                 <div className="sound-row-actions">
+                  <SoundPreviewButton src={sound.mp3Url} />
                   <button className="btn btn-success" type="button" onClick={() => play(sound)}>
-                    ▶ Play
+                    ▶ Play on Discord
                   </button>
                   <button
                     className="btn btn-primary"
