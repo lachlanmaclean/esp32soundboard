@@ -140,19 +140,15 @@ services:
       OWNER_DISCORD_ID: ${OWNER_DISCORD_ID}
     expose:
       - "3000"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    # Healthcheck and condition-based depends_on deliberately removed here -
+    # the site went down and a domain toggle didn't bring it back while
+    # these were in place, so this is a direct suspect. Reverted to a plain
+    # startup-order dependency (no health gating at all) to rule it out
+    # while the actual outage gets debugged from container logs.
     depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-      server:
-        condition: service_healthy
+      - postgres
+      - migrate
+      - server
 
 volumes:
   postgres_data:
