@@ -9,6 +9,7 @@ import {
   findUserVoiceChannel,
   TriggerError,
 } from "./bot/trigger";
+import { RateLimitError } from "./cooldown";
 
 /**
  * Separate process from the public API, run with Docker's host networking.
@@ -33,6 +34,9 @@ async function main() {
       await playSoundForUser(userId, soundId);
       return res.status(202).json({ ok: true });
     } catch (error) {
+      if (error instanceof RateLimitError) {
+        return res.status(429).json({ error: error.message });
+      }
       if (error instanceof TriggerError) {
         return res.status(409).json({ error: error.message });
       }
@@ -51,6 +55,9 @@ async function main() {
       await playExternalSoundForUser(userId, mp3Url);
       return res.status(202).json({ ok: true });
     } catch (error) {
+      if (error instanceof RateLimitError) {
+        return res.status(429).json({ error: error.message });
+      }
       if (error instanceof TriggerError) {
         return res.status(409).json({ error: error.message });
       }
@@ -69,6 +76,9 @@ async function main() {
       await playLocalFileForUser(userId, filePath);
       return res.status(202).json({ ok: true });
     } catch (error) {
+      if (error instanceof RateLimitError) {
+        return res.status(429).json({ error: error.message });
+      }
       if (error instanceof TriggerError) {
         return res.status(409).json({ error: error.message });
       }

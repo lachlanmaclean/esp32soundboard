@@ -6,6 +6,7 @@ import { buildHelpEmbed } from "./welcome";
 import { prisma } from "../db";
 import { getYoutubeMetadata, downloadYoutubeAudio, scheduleYoutubeTempCleanup, YoutubeError } from "../youtube";
 import { recordPlayEvent } from "../analytics";
+import { enforceCooldown, RateLimitError } from "../cooldown";
 
 const commands = [
   new SlashCommandBuilder().setName("join").setDescription("Bring Gooseboard into your current voice channel").toJSON(),
@@ -105,6 +106,10 @@ export function registerBotCommands() {
       await interaction.deferReply({ ephemeral: true });
 
       try {
+        // Checked before the download, not after - no point spending time
+        // fetching audio for a play that's just going to be rejected anyway.
+        await enforceCooldown(user.id);
+
         const metadata = await getYoutubeMetadata(url);
         const filePath = await downloadYoutubeAudio(url);
         scheduleYoutubeTempCleanup(filePath);
@@ -114,7 +119,7 @@ export function registerBotCommands() {
 
         await interaction.editReply(`▶ Playing **${metadata.title}**`);
       } catch (error) {
-        if (error instanceof YoutubeError) {
+        if (error instanceof RateLimitError || error instanceof YoutubeError) {
           await interaction.editReply(error.message);
           return;
         }

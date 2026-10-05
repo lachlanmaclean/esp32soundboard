@@ -22,12 +22,19 @@ export const authOptions: NextAuthOptions = {
       // covered without needing its own check.
       if (existing?.status === "SUSPENDED") return false;
 
+      // Only looked up for brand-new accounts - existing.cooldownPolicyId is
+      // left alone on every later sign-in so an admin's assignment sticks.
+      const defaultPolicy = existing
+        ? null
+        : await prisma.cooldownPolicy.findFirst({ where: { isDefault: true } });
+
       await prisma.user.upsert({
         where: { discordId: user.id },
         create: {
           discordId: user.id,
           discordUsername: user.name ?? "unknown",
           discordAvatar: user.image ?? null,
+          cooldownPolicyId: defaultPolicy?.id,
         },
         update: {
           discordUsername: user.name ?? "unknown",

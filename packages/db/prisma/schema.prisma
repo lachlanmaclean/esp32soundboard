@@ -39,6 +39,15 @@ model User {
   // all, regardless of version - for accounts where it'd just be noise
   // (e.g. a test account, or someone who asked to stop seeing it).
   changelogMuted           Boolean    @default(false)
+  // Null falls back to whichever policy has isDefault = true. Set
+  // explicitly on signup (apps/portal/src/lib/auth.ts) rather than left
+  // null, but kept nullable so an admin can also "unassign" back to
+  // whatever the current default is instead of a fixed one.
+  cooldownPolicyId String?
+  cooldownPolicy   CooldownPolicy? @relation(fields: [cooldownPolicyId], references: [id], onDelete: SetNull)
+  // Set once a user trips their policy's trigger; cleared naturally once
+  // it's in the past rather than an explicit un-set step.
+  rateLimitedUntil DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -47,6 +56,31 @@ model User {
   presets       Preset[]
   voiceSessions VoiceSession[]
   playEvents    PlayEvent[]
+
+  @@index([cooldownPolicyId])
+}
+
+// A rate-limiting policy an admin defines and assigns to users. Exactly one
+// policy has isDefault = true at a time (enforced in application code, not
+// a DB constraint) - new users are assigned it on signup, and it can never
+// be deleted, only have a different policy promoted to replace it.
+model CooldownPolicy {
+  id   String @id @default(cuid())
+  name String
+
+  // Trip condition: this many plays within this many seconds.
+  maxSoundsInWindow Int
+  windowSeconds     Int
+  // Once tripped: this long a wait is required between each play...
+  cooldownSeconds Int
+  // ...and the limited state itself lasts this long before lifting.
+  limitedDurationSeconds Int
+
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
 }
 
 // One stretch of time a user spent in a Discord voice channel the bot was

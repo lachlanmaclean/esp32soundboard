@@ -5,6 +5,7 @@ import { ensureOpusFile } from "../audio";
 import { canonicalAudioPath } from "../storage";
 import { discordClient } from "./client";
 import { playSoundInChannel, stopPlayback } from "./playback";
+import { enforceCooldown } from "../cooldown";
 
 export class TriggerError extends Error {}
 
@@ -33,6 +34,7 @@ export async function playSoundForUser(userId: string, soundId: string) {
   if (!user) throw new TriggerError("User not found");
   if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
   if (!sound) throw new TriggerError("Sound not found");
+  await enforceCooldown(userId);
 
   const channel = findUserVoiceChannel(user.discordId);
   if (!channel) {
@@ -60,6 +62,7 @@ export async function playExternalSoundForUser(userId: string, mp3Url: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new TriggerError("User not found");
   if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
+  await enforceCooldown(userId);
 
   const channel = findUserVoiceChannel(user.discordId);
   if (!channel) {
@@ -74,6 +77,7 @@ export async function playLocalFileForUser(userId: string, filePath: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new TriggerError("User not found");
   if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
+  await enforceCooldown(userId);
 
   const channel = findUserVoiceChannel(user.discordId);
   if (!channel) {
