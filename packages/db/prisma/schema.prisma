@@ -176,3 +176,13 @@ model Device {
 
   @@index([userId])
 }
+
+// Single-row cache of myinstants.com's trending results, re-scraped at most
+// once a day (apps/server/src/api/routes/library.ts) so a page load never
+// triggers a live scrape - persisted here instead of in-process memory so
+// it survives restarts/redeploys instead of silently resetting.
+model TrendingCache {
+  id        Int      @id @default(1)
+  results   Json
+  fetchedAt DateTime @default(now())
+}

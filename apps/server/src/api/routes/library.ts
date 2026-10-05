@@ -62,24 +62,55 @@ libraryRouter.get("/search", async (req, res) => {
   }
 });
 
-// Trending barely changes minute to minute, and every dashboard load would
-// otherwise hit myinstants.com directly - cache it for everyone.
-const TRENDING_CACHE_MS = 10 * 60 * 1000;
+// Trending changes slowly enough that re-scraping on every page load is
+// pure waste (and exactly the kind of repeated hit Cloudflare might flag) -
+// re-scraped at most once a day, persisted in the DB rather than in-process
+// memory so it survives restarts/redeploys instead of silently resetting
+// to "needs a fresh scrape" every time.
+const TRENDING_CACHE_MS = 24 * 60 * 60 * 1000;
 const TRENDING_COUNT = 4;
-let trendingCache: { results: LibrarySound[]; fetchedAt: number } | null = null;
+let trendingRefreshInFlight: Promise<LibrarySound[]> | null = null;
 
-libraryRouter.get("/trending", async (_req, res) => {
-  if (trendingCache && Date.now() - trendingCache.fetchedAt < TRENDING_CACHE_MS) {
-    return res.json(trendingCache.results);
+async function getTrendingCached(): Promise<LibrarySound[]> {
+  const cached = await prisma.trendingCache.findUnique({ where: { id: 1 } });
+  if (cached && Date.now() - cached.fetchedAt.getTime() < TRENDING_CACHE_MS) {
+    return cached.results as unknown as LibrarySound[];
   }
 
+  // Collapses concurrent requests hitting a stale/missing cache into one
+  // scrape instead of each kicking off its own.
+  if (trendingRefreshInFlight) return trendingRefreshInFlight;
+
+  trendingRefreshInFlight = fetchTrendingMyinstants()
+    .then(async (fresh) => {
+      const results = fresh.slice(0, TRENDING_COUNT);
+      await prisma.trendingCache.upsert({
+        where: { id: 1 },
+        create: { id: 1, results: results as object },
+        update: { results: results as object, fetchedAt: new Date() },
+      });
+      return results;
+    })
+    .catch((error) => {
+      console.error("[library] myinstants trending refresh failed", error);
+      // Stale is better than nothing - fall back to whatever's cached
+      // (even if past its 24h window) rather than erroring the page.
+      if (cached) return cached.results as unknown as LibrarySound[];
+      throw error;
+    })
+    .finally(() => {
+      trendingRefreshInFlight = null;
+    });
+
+  return trendingRefreshInFlight;
+}
+
+libraryRouter.get("/trending", async (_req, res) => {
   try {
-    const results = (await fetchTrendingMyinstants()).slice(0, TRENDING_COUNT);
-    trendingCache = { results, fetchedAt: Date.now() };
+    const results = await getTrendingCached();
     return res.json(results);
   } catch (error) {
     console.error("[library] myinstants trending failed", error);
-    if (trendingCache) return res.json(trendingCache.results);
     return res.status(502).json({ error: "Trending failed" });
   }
 });
