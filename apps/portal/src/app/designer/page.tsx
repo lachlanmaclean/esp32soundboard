@@ -57,7 +57,8 @@ export default async function DesignerPage() {
         </div>
         <p className="card-subtext">
           Click a slot on the board below to put a sound there. The active preset is what shows up on your paired
-          Gooseboard.
+          Gooseboard - if you leave gaps, the physical device packs your sounds together in order rather than
+          leaving blank buttons, since it just draws however many buttons it's sent.
         </p>
         <DesignerBoard librarySounds={sounds} />
       </section>
