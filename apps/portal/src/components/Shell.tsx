@@ -92,6 +92,12 @@ export function Shell({
           <div className="nav-section-label">Dashboard</div>
           <ul className="nav-list">
             <li>
+              <a className="nav-item" href="/" onClick={closeMenu}>
+                <span className="nav-icon">🏠</span>
+                <span className="nav-item-label">Dashboard</span>
+              </a>
+            </li>
+            <li>
               <a className="nav-item" href="/board" onClick={closeMenu}>
                 <span className="nav-icon">🎛️</span>
                 <span className="nav-item-label">Soundboard</span>

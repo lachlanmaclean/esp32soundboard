@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOwnerDiscordId, IMPERSONATE_COOKIE } from "@/lib/currentUser";
 import { SERVER_URL } from "@/lib/serverApi";
+import { AdminRowMenu } from "@/components/AdminRowMenu";
 
 export const metadata = {
   title: "Gooseboard — Admin",
@@ -43,6 +45,7 @@ export default async function AdminPage() {
     const id = formData.get("id") as string;
     const tier = formData.get("tier") as "NORMAL" | "PRO";
     await prisma.user.update({ where: { id }, data: { tier } });
+    revalidatePath("/admin");
   }
 
   async function setStatusAction(formData: FormData) {
@@ -50,6 +53,7 @@ export default async function AdminPage() {
     const id = formData.get("id") as string;
     const status = formData.get("status") as "ACTIVE" | "SUSPENDED";
     await prisma.user.update({ where: { id }, data: { status } });
+    revalidatePath("/admin");
   }
 
   async function forceDeleteAction(formData: FormData) {
@@ -63,6 +67,7 @@ export default async function AdminPage() {
 
     await Promise.all(presets.map((p) => fetch(`${SERVER_URL}/api/presets/${p.id}`, { method: "DELETE" })));
     await Promise.all(sounds.map((s) => fetch(`${SERVER_URL}/api/sounds/${s.id}`, { method: "DELETE" })));
+    revalidatePath("/admin");
   }
 
   async function impersonateAction(formData: FormData) {
@@ -79,6 +84,7 @@ export default async function AdminPage() {
   return (
     <main className="auth-screen" style={{ alignItems: "flex-start", padding: "32px 16px" }}>
       <div className="auth-card" style={{ maxWidth: 1100, width: "100%", textAlign: "left" }}>
+        <a className="btn-link" href="/">← Back to Gooseboard</a>
         <h1>🛠️ Admin</h1>
         <p className="card-subtext">{users.length} users</p>
 
@@ -145,10 +151,7 @@ export default async function AdminPage() {
                         <input type="hidden" name="id" value={user.id} />
                         <button className="btn" type="submit">Impersonate</button>
                       </form>
-                      <form action={forceDeleteAction}>
-                        <input type="hidden" name="id" value={user.id} />
-                        <button className="btn btn-danger" type="submit">Wipe content</button>
-                      </form>
+                      <AdminRowMenu userId={user.id} username={user.discordUsername} wipeAction={forceDeleteAction} />
                     </div>
                   </td>
                 </tr>

@@ -138,40 +138,45 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const slotsByPosition = new Map(selected.slots.map((slot) => [slot.position, slot.sound]));
   const filledCount = selected.slots.length;
 
-  const slots = Array.from({ length: slotLimit }, (_, position) => {
-    const sound = slotsByPosition.get(position);
-    const isEditing = editingPosition === position;
-
-    if (isEditing) {
-      return (
-        <div key={position} className="gooseboard-slot gooseboard-slot-editing">
-          <select
-            defaultValue=""
-            onChange={(event) => {
-              if (!event.target.value) return;
-              if (sound) editSlot(selected.id, position, event.target.value);
-              else addSound(selected.id, event.target.value);
-            }}
-            autoFocus
-          >
-            <option value="" disabled>Pick a sound...</option>
-            {librarySounds.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.icon ? `${option.icon} ` : ""}
-                {option.displayName}
-              </option>
-            ))}
-          </select>
-          <div className="gooseboard-slot-editing-actions">
-            {sound && (
-              <button className="btn btn-danger" type="button" onClick={() => clearSlot(selected.id, position)}>
-                Clear
-              </button>
-            )}
-            <button className="btn" type="button" onClick={() => setEditingPosition(null)}>Cancel</button>
-          </div>
+  function renderEditPopover(position: number, sound: LibrarySoundOption | undefined, className: string) {
+    return (
+      <div key={position} className={className}>
+        <select
+          defaultValue=""
+          onChange={(event) => {
+            if (!event.target.value) return;
+            if (sound) editSlot(selected!.id, position, event.target.value);
+            else addSound(selected!.id, event.target.value);
+          }}
+          autoFocus
+        >
+          <option value="" disabled>Pick a sound...</option>
+          {librarySounds.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.icon ? `${option.icon} ` : ""}
+              {option.displayName}
+            </option>
+          ))}
+        </select>
+        <div className="gooseboard-slot-editing-actions">
+          {sound && (
+            <button className="btn btn-danger" type="button" onClick={() => clearSlot(selected!.id, position)}>
+              Clear
+            </button>
+          )}
+          <button className="btn" type="button" onClick={() => setEditingPosition(null)}>Cancel</button>
         </div>
-      );
+      </div>
+    );
+  }
+
+  // Pro mirrors the physical device: a fixed 4x2 grid, every slot visible
+  // (filled or not), since that's literally what the hardware's screen
+  // looks like.
+  const proSlots = Array.from({ length: slotLimit }, (_, position) => {
+    const sound = slotsByPosition.get(position);
+    if (editingPosition === position) {
+      return renderEditPopover(position, sound, "gooseboard-slot gooseboard-slot-editing");
     }
 
     // Only the next open slot (right after the last filled one) is
@@ -199,6 +204,44 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
       </button>
     );
   });
+
+  // Normal has no device to mirror - just show the sounds that are
+  // actually there, styled exactly like the real tap-to-play board, plus
+  // one "+" tile at the end instead of a wall of up-to-30 empty placeholders.
+  const normalSlots = [
+    ...selected.slots.map((slot) => {
+      const position = slot.position;
+      if (editingPosition === position) {
+        return renderEditPopover(position, slot.sound, "board-tile board-tile-editing");
+      }
+
+      return (
+        <button
+          key={position}
+          type="button"
+          className="board-tile"
+          style={{ ["--tile-color" as string]: slot.sound.color }}
+          onClick={() => setEditingPosition(position)}
+        >
+          <span className="board-tile-icon">{slot.sound.icon ?? "🔊"}</span>
+          <span className="board-tile-name">{slot.sound.displayName}</span>
+        </button>
+      );
+    }),
+    filledCount < slotLimit &&
+      (editingPosition === filledCount ? (
+        renderEditPopover(filledCount, undefined, "board-tile board-tile-editing")
+      ) : (
+        <button
+          key="add"
+          type="button"
+          className="board-tile board-tile-add"
+          onClick={() => setEditingPosition(filledCount)}
+        >
+          <span className="gooseboard-slot-plus">+</span>
+        </button>
+      )),
+  ].filter(Boolean);
 
   return (
     <>
@@ -259,9 +302,13 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
         </>
       )}
 
-      <div className={isPro ? "gooseboard-mockup" : undefined}>
-        <div className={isPro ? "gooseboard-mockup-screen" : "board-grid-flexible"}>{slots}</div>
-      </div>
+      {isPro ? (
+        <div className="gooseboard-mockup">
+          <div className="gooseboard-mockup-screen">{proSlots}</div>
+        </div>
+      ) : (
+        <div className="board-grid">{normalSlots}</div>
+      )}
     </>
   );
 }

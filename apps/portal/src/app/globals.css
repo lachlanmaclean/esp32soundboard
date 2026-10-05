@@ -1210,6 +1210,36 @@ button.sound-tile-empty:hover {
   overflow-wrap: anywhere;
 }
 
+.board-tile-add {
+  --tile-color: var(--text-faint);
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-faint);
+}
+
+.board-tile-add:hover {
+  border-color: var(--text-normal);
+  color: var(--text-normal);
+}
+
+.board-tile-editing {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  cursor: default;
+}
+
+.board-tile-editing select {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-normal);
+  padding: 6px;
+  font-size: 12px;
+}
+
 .board-hint {
   text-align: center;
   font-size: 13px;
@@ -1258,6 +1288,84 @@ button.sound-tile-empty:hover {
 .admin-table .btn {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.admin-row-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.admin-row-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.admin-row-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 81;
+  background: var(--bg-floating);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 140px;
+  overflow: hidden;
+}
+
+.admin-row-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-normal);
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-row-menu-item:hover {
+  background: var(--bg-secondary);
+}
+
+.admin-row-menu-item-danger {
+  color: var(--red);
+}
+
+/* ---------- modal ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.modal-card h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 @media (min-width: 640px) {
