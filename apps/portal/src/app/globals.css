@@ -1285,6 +1285,12 @@ button.sound-tile-empty:hover {
   gap: 6px;
 }
 
+.admin-changelog-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .admin-table .btn {
   padding: 4px 8px;
   font-size: 12px;
@@ -1366,6 +1372,15 @@ button.sound-tile-empty:hover {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+.changelog-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
 }
 
 @media (min-width: 640px) {

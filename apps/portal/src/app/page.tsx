@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
+import { shouldShowChangelog } from "@/lib/changelog";
 import { Shell } from "@/components/Shell";
 
 export default async function HomePage() {
@@ -49,6 +50,7 @@ export default async function HomePage() {
       tier={user.tier}
       isImpersonating={isImpersonating}
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+      showChangelog={shouldShowChangelog(user)}
     >
       <div className="hub-grid">
         <a className="hub-card" href="/board">

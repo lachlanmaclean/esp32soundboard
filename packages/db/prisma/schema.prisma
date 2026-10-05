@@ -32,6 +32,13 @@ model User {
   discordAvatar   String?
   tier            UserTier   @default(NORMAL)
   status          UserStatus @default(ACTIVE)
+  // Version string (see apps/portal/src/lib/changelog.ts) of the newest
+  // changelog entry this user has dismissed. Null means never seen one.
+  lastSeenChangelogVersion String?
+  // Owner-only override: skip showing the changelog popup to this user at
+  // all, regardless of version - for accounts where it'd just be noise
+  // (e.g. a test account, or someone who asked to stop seeing it).
+  changelogMuted           Boolean    @default(false)
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 

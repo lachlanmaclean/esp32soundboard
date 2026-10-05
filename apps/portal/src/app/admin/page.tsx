@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOwnerDiscordId, IMPERSONATE_COOKIE } from "@/lib/currentUser";
+import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
 import { SERVER_URL } from "@/lib/serverApi";
 import { AdminRowMenu } from "@/components/AdminRowMenu";
 
@@ -70,6 +71,14 @@ export default async function AdminPage() {
     revalidatePath("/admin");
   }
 
+  async function toggleChangelogMuteAction(formData: FormData) {
+    "use server";
+    const id = formData.get("id") as string;
+    const changelogMuted = formData.get("changelogMuted") === "true";
+    await prisma.user.update({ where: { id }, data: { changelogMuted } });
+    revalidatePath("/admin");
+  }
+
   async function impersonateAction(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
@@ -100,6 +109,7 @@ export default async function AdminPage() {
                 <th>Presets</th>
                 <th>Plays</th>
                 <th>Voice (min)</th>
+                <th>Changelog</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -145,6 +155,24 @@ export default async function AdminPage() {
                   <td>{user._count.presets}</td>
                   <td>{user._count.playEvents}</td>
                   <td>{formatVoiceMinutes(user.voiceSessions)}</td>
+                  <td>
+                    <div className="admin-changelog-cell">
+                      {user.changelogMuted ? (
+                        <span className="card-subtext">🔇 Muted</span>
+                      ) : user.lastSeenChangelogVersion === LATEST_CHANGELOG_VERSION ? (
+                        <span className="card-subtext">✅ Seen</span>
+                      ) : (
+                        <span className="card-subtext">❌ Not seen</span>
+                      )}
+                      <form action={toggleChangelogMuteAction}>
+                        <input type="hidden" name="id" value={user.id} />
+                        <input type="hidden" name="changelogMuted" value={(!user.changelogMuted).toString()} />
+                        <button className="btn" type="submit" title={user.changelogMuted ? "Unmute" : "Mute"}>
+                          {user.changelogMuted ? "Unmute" : "Mute"}
+                        </button>
+                      </form>
+                    </div>
+                  </td>
                   <td>
                     <div className="admin-actions">
                       <form action={impersonateAction}>

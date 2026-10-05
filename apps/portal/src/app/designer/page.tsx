@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
+import { shouldShowChangelog } from "@/lib/changelog";
 import { Shell } from "@/components/Shell";
 import { DesignerBoard } from "@/components/DesignerBoard";
 
@@ -61,6 +62,7 @@ export default async function DesignerPage() {
       tier={user.tier}
       isImpersonating={isImpersonating}
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+      showChangelog={shouldShowChangelog(user)}
     >
       <section className="card">
         <div className="card-header">

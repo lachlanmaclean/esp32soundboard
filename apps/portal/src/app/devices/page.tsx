@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
+import { shouldShowChangelog } from "@/lib/changelog";
 import { SERVER_URL } from "@/lib/serverApi";
 import { Shell } from "@/components/Shell";
 
@@ -75,6 +76,7 @@ export default async function DevicesPage() {
       tier={user.tier}
       isImpersonating={isImpersonating}
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+      showChangelog={shouldShowChangelog(user)}
     >
       <section className="card">
         <div className="card-header">

@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
+import { shouldShowChangelog } from "@/lib/changelog";
 import { Shell } from "@/components/Shell";
 import { YoutubePlayer } from "@/components/YoutubePlayer";
 
@@ -64,6 +65,7 @@ export default async function YoutubePage() {
       tier={user.tier}
       isImpersonating={isImpersonating}
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+      showChangelog={shouldShowChangelog(user)}
     >
       <section className="card">
         <div className="card-header">

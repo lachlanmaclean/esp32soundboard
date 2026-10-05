@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { buildBotInviteUrl } from "@/lib/discord";
+import { ChangelogModal } from "./ChangelogModal";
 
 function initials(name: string) {
   return name.trim().slice(0, 2).toUpperCase();
@@ -15,6 +16,7 @@ export function Shell({
   tier,
   isImpersonating = false,
   isOwner = false,
+  showChangelog = false,
   children,
 }: {
   userName: string;
@@ -27,6 +29,8 @@ export function Shell({
   isImpersonating?: boolean;
   /** True for the real owner account (never true while impersonating) - shows the Admin nav link. */
   isOwner?: boolean;
+  /** Computed server-side from shouldShowChangelog() - whether to pop up the "what's new" modal. */
+  showChangelog?: boolean;
   children: React.ReactNode;
 }) {
   const isPro = tier === "PRO";
@@ -52,6 +56,7 @@ export function Shell({
 
   return (
     <>
+      {!isImpersonating && <ChangelogModal shouldShow={showChangelog} />}
       {isImpersonating && (
         <div className="impersonation-banner">
           Viewing as <strong>{userName}</strong>
@@ -98,12 +103,6 @@ export function Shell({
               </a>
             </li>
             <li>
-              <a className="nav-item" href="/board" onClick={closeMenu}>
-                <span className="nav-icon">🎛️</span>
-                <span className="nav-item-label">Soundboard</span>
-              </a>
-            </li>
-            <li>
               <a className="nav-item" href="/designer" onClick={closeMenu}>
                 <span className="nav-icon">🧩</span>
                 <span className="nav-item-label">Designer</span>
@@ -123,17 +122,29 @@ export function Shell({
             </li>
             {isPro && (
               <li>
-                <a className="nav-item" href="/youtube" onClick={closeMenu}>
-                  <span className="nav-icon">📺</span>
-                  <span className="nav-item-label">YouTube</span>
-                </a>
-              </li>
-            )}
-            {isPro && (
-              <li>
                 <a className="nav-item" href="/devices" onClick={closeMenu}>
                   <span className="nav-icon">📟</span>
                   <span className="nav-item-label">Devices</span>
+                </a>
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <div>
+          <div className="nav-section-label">Tools</div>
+          <ul className="nav-list">
+            <li>
+              <a className="nav-item" href="/board" onClick={closeMenu}>
+                <span className="nav-icon">🎛️</span>
+                <span className="nav-item-label">Soundboard</span>
+              </a>
+            </li>
+            {isPro && (
+              <li>
+                <a className="nav-item" href="/youtube" onClick={closeMenu}>
+                  <span className="nav-icon">📺</span>
+                  <span className="nav-item-label">YouTube</span>
                 </a>
               </li>
             )}

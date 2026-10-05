@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
+import { shouldShowChangelog } from "@/lib/changelog";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
@@ -86,6 +87,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: { er
       tier={user.tier}
       isImpersonating={isImpersonating}
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+      showChangelog={shouldShowChangelog(user)}
     >
       {searchParams.error && <p className="alert">{searchParams.error}</p>}
 
