@@ -1298,6 +1298,7 @@ button.sound-tile-empty:hover {
 
 .admin-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -1313,8 +1314,8 @@ button.sound-tile-empty:hover {
    for each row, two unrelated layout systems that never actually aligned. */
 .policy-grid {
   display: grid;
-  grid-template-columns: 160px 90px 90px 90px 100px 80px 1fr;
-  column-gap: 10px;
+  grid-template-columns: minmax(110px, 1.4fr) 80px 80px 80px 90px 70px minmax(150px, 210px);
+  column-gap: 8px;
 }
 
 .policy-grid-header,

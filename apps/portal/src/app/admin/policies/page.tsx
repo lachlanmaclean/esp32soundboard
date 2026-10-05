@@ -78,7 +78,7 @@ export default async function CooldownPoliciesPage() {
 
   return (
     <main className="auth-screen" style={{ alignItems: "flex-start", padding: "32px 16px" }}>
-      <div className="auth-card" style={{ maxWidth: 900, width: "100%", textAlign: "left" }}>
+      <div className="auth-card" style={{ maxWidth: 1000, width: "100%", textAlign: "left" }}>
         <a className="btn-link" href="/admin">← Back to Admin</a>
         <h1>⏱️ Cooldown policies</h1>
         <p className="card-subtext">
