@@ -1314,7 +1314,7 @@ button.sound-tile-empty:hover {
    for each row, two unrelated layout systems that never actually aligned. */
 .policy-grid {
   display: grid;
-  grid-template-columns: minmax(110px, 1.4fr) 80px 80px 80px 90px 70px minmax(150px, 210px);
+  grid-template-columns: minmax(110px, 1.4fr) 80px 80px 80px 90px 70px 48px;
   column-gap: 8px;
 }
 
@@ -1477,6 +1477,37 @@ button.sound-tile-empty:hover {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+.new-policy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.new-policy-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.new-policy-form input[type="text"],
+.new-policy-form input[type="number"] {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-normal);
+  font-size: 14px;
+  padding: 7px 10px;
+}
+
+.new-policy-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .changelog-list {

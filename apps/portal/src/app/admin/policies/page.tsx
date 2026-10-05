@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOwnerDiscordId } from "@/lib/currentUser";
-import { NewPolicyRow } from "@/components/NewPolicyRow";
+import { NewPolicyButton } from "@/components/NewPolicyButton";
 import { PolicyRowMenu } from "@/components/PolicyRowMenu";
 
 export const metadata = {
@@ -82,11 +82,14 @@ export default async function CooldownPoliciesPage() {
     <main className="auth-screen" style={{ alignItems: "flex-start", padding: "32px 16px" }}>
       <div className="auth-card" style={{ maxWidth: 1000, width: "100%", textAlign: "left" }}>
         <a className="btn-link" href="/admin">← Back to Admin</a>
-        <h1>⏱️ Cooldown policies</h1>
+        <div className="card-header">
+          <h1 style={{ margin: 0 }}>⏱️ Cooldown policies</h1>
+          <NewPolicyButton action={createPolicyAction} />
+        </div>
         <p className="card-subtext">
-          Trips once a user plays {"maxSoundsInWindow"} sounds within {"windowSeconds"}s; while limited, they must
-          wait {"cooldownSeconds"}s between sounds, for {"limitedDurationSeconds"}s total. The default policy can&apos;t
-          be deleted, only replaced by picking a new one below and saving.
+          Trips once a user plays too many sounds too quickly; while limited, they have to wait between sounds for a
+          set stretch of time. The default policy can&apos;t be deleted, only replaced by picking a new one below and
+          saving.
         </p>
 
         <div className="admin-table-wrap">
@@ -105,28 +108,43 @@ export default async function CooldownPoliciesPage() {
           <form action={saveAllPoliciesAction} className="policy-grid">
             {policies.map((policy) => (
               <div key={policy.id} className="policy-grid-row">
-                <input type="text" name={`name_${policy.id}`} defaultValue={policy.name} />
+                <input type="text" name={`name_${policy.id}`} defaultValue={policy.name} aria-label={`${policy.name} - name`} />
                 <input
                   type="number"
                   name={`maxSoundsInWindow_${policy.id}`}
                   defaultValue={policy.maxSoundsInWindow}
                   min={1}
+                  aria-label={`${policy.name} - max sounds`}
                 />
-                <input type="number" name={`windowSeconds_${policy.id}`} defaultValue={policy.windowSeconds} min={1} />
+                <input
+                  type="number"
+                  name={`windowSeconds_${policy.id}`}
+                  defaultValue={policy.windowSeconds}
+                  min={1}
+                  aria-label={`${policy.name} - window seconds`}
+                />
                 <input
                   type="number"
                   name={`cooldownSeconds_${policy.id}`}
                   defaultValue={policy.cooldownSeconds}
                   min={0}
+                  aria-label={`${policy.name} - cooldown seconds`}
                 />
                 <input
                   type="number"
                   name={`limitedDurationSeconds_${policy.id}`}
                   defaultValue={policy.limitedDurationSeconds}
                   min={0}
+                  aria-label={`${policy.name} - limited duration seconds`}
                 />
                 <span className="policy-row-radio">
-                  <input type="radio" name="defaultPolicyId" value={policy.id} defaultChecked={policy.isDefault} />
+                  <input
+                    type="radio"
+                    name="defaultPolicyId"
+                    value={policy.id}
+                    defaultChecked={policy.isDefault}
+                    aria-label={`Make ${policy.name} the default policy`}
+                  />
                 </span>
                 <span>
                   {!policy.isDefault && (
@@ -140,10 +158,6 @@ export default async function CooldownPoliciesPage() {
               💾 Save changes
             </button>
           </form>
-
-          <div className="policy-grid">
-            <NewPolicyRow action={createPolicyAction} />
-          </div>
         </div>
       </div>
     </main>
