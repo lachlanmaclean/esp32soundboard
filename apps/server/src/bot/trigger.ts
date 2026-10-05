@@ -68,3 +68,17 @@ export async function playExternalSoundForUser(userId: string, mp3Url: string) {
 
   await playSoundInChannel(channel, mp3Url, false);
 }
+
+/** Plays an already-downloaded local file (e.g. extracted YouTube audio) - never added to the library/DB. */
+export async function playLocalFileForUser(userId: string, filePath: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new TriggerError("User not found");
+  if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
+
+  const channel = findUserVoiceChannel(user.discordId);
+  if (!channel) {
+    throw new TriggerError("Join a voice channel in a server Gooseboard is in, then try again");
+  }
+
+  await playSoundInChannel(channel, filePath, false);
+}

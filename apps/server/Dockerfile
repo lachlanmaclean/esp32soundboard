@@ -4,8 +4,15 @@
 # caused voice connections to hang even with correct networking otherwise.
 FROM node:22-bookworm-slim AS base
 # openssl: Prisma's query engine. ffmpeg: transcodes uploaded mp3/wav/ogg to
-# Opus for @discordjs/voice.
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ffmpeg ca-certificates \
+# Opus for @discordjs/voice, and is also what yt-dlp shells out to for audio
+# extraction. python3/pip: yt-dlp is a Python package - installed via pip
+# rather than its standalone binary so it stays current via `pip install -U`
+# without a Dockerfile change if YouTube's extraction breaks again (it does,
+# periodically). --break-system-packages: Debian's pip refuses system-wide
+# installs otherwise (PEP 668); fine here since this container runs nothing
+# else that could conflict.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ffmpeg ca-certificates python3 python3-pip \
+    && pip install --no-cache-dir --break-system-packages yt-dlp \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /repo
 

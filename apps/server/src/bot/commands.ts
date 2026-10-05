@@ -1,13 +1,21 @@
 import { Events, SlashCommandBuilder, GuildMember } from "discord.js";
 import { entersState, VoiceConnectionStatus } from "@discordjs/voice";
 import { discordClient } from "./client";
-import { joinFreshVoiceChannel, leaveVoiceChannel } from "./playback";
+import { joinFreshVoiceChannel, leaveVoiceChannel, playSoundInChannel } from "./playback";
 import { buildHelpEmbed } from "./welcome";
+import { prisma } from "../db";
+import { getYoutubeMetadata, downloadYoutubeAudio, scheduleYoutubeTempCleanup, YoutubeError } from "../youtube";
+import { recordPlayEvent } from "../analytics";
 
 const commands = [
   new SlashCommandBuilder().setName("join").setDescription("Bring Gooseboard into your current voice channel").toJSON(),
   new SlashCommandBuilder().setName("leave").setDescription("Disconnect Gooseboard from voice").toJSON(),
   new SlashCommandBuilder().setName("help").setDescription("Show Gooseboard's commands and portal link").toJSON(),
+  new SlashCommandBuilder()
+    .setName("play")
+    .setDescription("Play a YouTube video's audio (Pro)")
+    .addStringOption((option) => option.setName("url").setDescription("YouTube video URL").setRequired(true))
+    .toJSON(),
 ];
 
 async function registerCommandsForGuild(guildId: string) {
@@ -68,6 +76,51 @@ export function registerBotCommands() {
 
     if (interaction.commandName === "help") {
       await interaction.reply({ embeds: [buildHelpEmbed()], ephemeral: true });
+      return;
+    }
+
+    if (interaction.commandName === "play") {
+      const member = interaction.member instanceof GuildMember ? interaction.member : null;
+      const channel = member?.voice.channel;
+      const url = interaction.options.get("url", true).value as string;
+
+      if (!channel) {
+        await interaction.reply({ content: "Join a voice channel first, then run this again.", ephemeral: true });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({ where: { discordId: interaction.user.id } });
+      if (!user || user.tier !== "PRO") {
+        await interaction.reply({
+          content: "Playing YouTube audio is a Pro feature. Upgrade from the web portal to use it.",
+          ephemeral: true,
+        });
+        return;
+      }
+      if (user.status === "SUSPENDED") {
+        await interaction.reply({ content: "Your account is suspended.", ephemeral: true });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        const metadata = await getYoutubeMetadata(url);
+        const filePath = await downloadYoutubeAudio(url);
+        scheduleYoutubeTempCleanup(filePath);
+
+        await playSoundInChannel(channel, filePath, false);
+        recordPlayEvent(user.id, null, "DISCORD");
+
+        await interaction.editReply(`▶ Playing **${metadata.title}**`);
+      } catch (error) {
+        if (error instanceof YoutubeError) {
+          await interaction.editReply(error.message);
+          return;
+        }
+        console.error("[bot] /play failed", error);
+        await interaction.editReply("Couldn't play that video — check the server logs.");
+      }
     }
   });
 }

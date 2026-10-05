@@ -1,7 +1,13 @@
 import express from "express";
 import { env } from "./env";
 import { startBot } from "./bot/client";
-import { playSoundForUser, playExternalSoundForUser, findUserVoiceChannel, TriggerError } from "./bot/trigger";
+import {
+  playSoundForUser,
+  playExternalSoundForUser,
+  playLocalFileForUser,
+  findUserVoiceChannel,
+  TriggerError,
+} from "./bot/trigger";
 
 /**
  * Separate process from the public API, run with Docker's host networking.
@@ -48,6 +54,24 @@ async function main() {
         return res.status(409).json({ error: error.message });
       }
       console.error("[bot] external trigger failed", error);
+      return res.status(500).json({ error: "Playback failed" });
+    }
+  });
+
+  app.post("/internal/trigger-file", async (req, res) => {
+    const { userId, filePath } = req.body as { userId?: string; filePath?: string };
+    if (!userId || !filePath) {
+      return res.status(400).json({ error: "userId and filePath are required" });
+    }
+
+    try {
+      await playLocalFileForUser(userId, filePath);
+      return res.status(202).json({ ok: true });
+    } catch (error) {
+      if (error instanceof TriggerError) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("[bot] local file trigger failed", error);
       return res.status(500).json({ error: "Playback failed" });
     }
   });

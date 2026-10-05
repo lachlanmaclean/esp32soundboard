@@ -777,6 +777,37 @@ button.sound-tile-empty:hover {
   padding-top: 4px;
 }
 
+/* ---------- youtube player ---------- */
+
+.yt-player {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.yt-player-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.yt-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.yt-player-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  width: 38px;
+}
+
 /* ---------- soundboard designer ---------- */
 
 .preset-tabs {

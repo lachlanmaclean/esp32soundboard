@@ -18,6 +18,7 @@ export function buildHelpEmbed() {
         value: [
           "`/join` — bring me into your current voice channel",
           "`/leave` — disconnect me from voice",
+          "`/play <url>` — play a YouTube video's audio (Pro)",
           "`/help` — show this message again",
         ].join("\n"),
       },

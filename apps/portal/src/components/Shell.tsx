@@ -117,6 +117,14 @@ export function Shell({
             </li>
             {isPro && (
               <li>
+                <a className="nav-item" href="/youtube" onClick={closeMenu}>
+                  <span className="nav-icon">📺</span>
+                  <span className="nav-item-label">YouTube</span>
+                </a>
+              </li>
+            )}
+            {isPro && (
+              <li>
                 <a className="nav-item" href="/devices" onClick={closeMenu}>
                   <span className="nav-icon">📟</span>
                   <span className="nav-item-label">Devices</span>

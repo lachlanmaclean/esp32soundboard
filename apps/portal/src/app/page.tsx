@@ -72,6 +72,13 @@ export default async function HomePage() {
           <span className="hub-card-subtext">Search myinstants.com and add clips to your library.</span>
         </a>
         {isPro && (
+          <a className="hub-card" href="/youtube">
+            <span className="hub-card-icon">📺</span>
+            <span className="hub-card-title">YouTube</span>
+            <span className="hub-card-subtext">Play a video's audio, in the browser or straight to Discord.</span>
+          </a>
+        )}
+        {isPro && (
           <a className="hub-card" href="/devices">
             <span className="hub-card-icon">📟</span>
             <span className="hub-card-title">Devices</span>
