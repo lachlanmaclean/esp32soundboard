@@ -784,6 +784,19 @@ button.sound-tile-empty:hover {
   aspect-ratio: 2 / 1;
 }
 
+/* Normal tier's board: no device bezel (they have no physical device to
+   mirror), a flexible wrapping grid sized to their library limit instead of
+   the CYD's fixed 4x2. */
+.board-grid-flexible {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.board-grid-flexible .gooseboard-slot {
+  aspect-ratio: 1;
+}
+
 .gooseboard-slot {
   display: flex;
   flex-direction: column;

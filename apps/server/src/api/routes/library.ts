@@ -3,7 +3,7 @@ import { searchMyinstants, fetchTrendingMyinstants, isMyinstantsAudioUrl, Librar
 import { importMyinstantsSound } from "../../library/import";
 import { triggerExternalPlayback, BotProxyError } from "../botClient";
 import { prisma } from "../../db";
-import { LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
+import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 export const libraryRouter = Router();
 
@@ -115,9 +115,15 @@ libraryRouter.post("/import", async (req, res) => {
     return res.status(400).json({ error: "mp3Url must be a myinstants.com sound" });
   }
 
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const libraryLimit = user.tier === "PRO" ? PRO_LIBRARY_SOUND_LIMIT : LIBRARY_SOUND_LIMIT;
   const libraryCount = await prisma.sound.count({ where: { userId } });
-  if (libraryCount >= LIBRARY_SOUND_LIMIT) {
-    return res.status(409).json({ error: `Library is full (max ${LIBRARY_SOUND_LIMIT} sounds) - delete one first` });
+  if (libraryCount >= libraryLimit) {
+    return res.status(409).json({ error: `Library is full (max ${libraryLimit} sounds) - delete one first` });
   }
 
   try {

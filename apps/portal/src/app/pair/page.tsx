@@ -68,6 +68,18 @@ export default async function PairPage({
     );
   }
 
+  if (user.tier !== "PRO") {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <div className="auth-logo">📟</div>
+          <h1>Pro feature</h1>
+          <p>Pairing a physical Gooseboard is a Pro feature.</p>
+        </div>
+      </main>
+    );
+  }
+
   async function submit() {
     "use server";
     const ok = await confirmPairing(pairingCode!, user!.id);

@@ -8,7 +8,7 @@ import { env } from "../../env";
 import { triggerPlayback, BotProxyError } from "../botClient";
 import { transcodeToOpus } from "../../audio";
 import { deduplicateUpload, removeUploadedFile, canonicalAudioPath } from "../../storage";
-import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
+import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 export const soundsRouter = Router();
 
@@ -44,10 +44,17 @@ soundsRouter.post("/", upload.single("audio"), async (req, res) => {
     return res.status(400).json({ error: "userId, displayName and color are required" });
   }
 
-  const libraryCount = await prisma.sound.count({ where: { userId } });
-  if (libraryCount >= LIBRARY_SOUND_LIMIT) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
     fs.unlink(path.join(env.uploadDir, req.file.filename), () => {});
-    return res.status(409).json({ error: `Library is full (max ${LIBRARY_SOUND_LIMIT} sounds) - delete one first` });
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const libraryLimit = user.tier === "PRO" ? PRO_LIBRARY_SOUND_LIMIT : LIBRARY_SOUND_LIMIT;
+  const libraryCount = await prisma.sound.count({ where: { userId } });
+  if (libraryCount >= libraryLimit) {
+    fs.unlink(path.join(env.uploadDir, req.file.filename), () => {});
+    return res.status(409).json({ error: `Library is full (max ${libraryLimit} sounds) - delete one first` });
   }
 
   const uploadedPath = path.join(env.uploadDir, req.file.filename);

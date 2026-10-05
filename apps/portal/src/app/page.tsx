@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
-import { LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
+import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { UploadForm } from "@/components/UploadForm";
@@ -46,7 +46,11 @@ export default async function HomePage({ searchParams }: { searchParams: { error
   }
 
   const sounds = await prisma.sound.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
-  const devices = await prisma.device.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
+  const isPro = user.tier === "PRO";
+  const libraryLimit = isPro ? PRO_LIBRARY_SOUND_LIMIT : LIBRARY_SOUND_LIMIT;
+  const devices = isPro
+    ? await prisma.device.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } })
+    : [];
 
   async function uploadSoundAction(formData: FormData) {
     "use server";
@@ -82,7 +86,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
 
   return (
-    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿">
+    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿" tier={user.tier}>
       {searchParams.error && <p className="alert">{searchParams.error}</p>}
 
       <section className="card" id="soundboard">
@@ -98,7 +102,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
       <section className="card" id="sounds">
         <div className="card-header">
           <h2>🔊 Sound library</h2>
-          <span className="count-badge">{sounds.length}/{LIBRARY_SOUND_LIMIT}</span>
+          <span className="count-badge">{sounds.length}/{libraryLimit}</span>
         </div>
 
         {sounds.length === 0 ? (
@@ -129,7 +133,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
           </div>
         )}
 
-        {sounds.length < LIBRARY_SOUND_LIMIT && (
+        {sounds.length < libraryLimit && (
           <UploadForm action={uploadSoundAction} buttonLabel="Upload" />
         )}
       </section>
@@ -141,34 +145,36 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         <MemeLibrary />
       </section>
 
-      <section className="card" id="devices">
-        <div className="card-header">
-          <h2>📟 Devices</h2>
-          <span className="count-badge">{devices.length}</span>
-        </div>
-
-        {devices.length === 0 ? (
-          <div className="empty-state">No devices paired yet. Scan the QR code on your Gooseboard&apos;s screen to pair one.</div>
-        ) : (
-          <div className="device-list">
-            {devices.map((device) => (
-              <div key={device.cuid} className="device-row">
-                <span className="status-dot" />
-                <div className="device-info">
-                  <span className="device-id">{device.cuid}</span>
-                  <span className="device-seen">
-                    Last seen {device.lastSeenAt?.toLocaleString() ?? "never"}
-                  </span>
-                </div>
-                <form action={unpairDeviceAction}>
-                  <input type="hidden" name="cuid" value={device.cuid} />
-                  <button className="btn btn-danger" type="submit">Unpair</button>
-                </form>
-              </div>
-            ))}
+      {isPro && (
+        <section className="card" id="devices">
+          <div className="card-header">
+            <h2>📟 Devices</h2>
+            <span className="count-badge">{devices.length}</span>
           </div>
-        )}
-      </section>
+
+          {devices.length === 0 ? (
+            <div className="empty-state">No devices paired yet. Scan the QR code on your Gooseboard&apos;s screen to pair one.</div>
+          ) : (
+            <div className="device-list">
+              {devices.map((device) => (
+                <div key={device.cuid} className="device-row">
+                  <span className="status-dot" />
+                  <div className="device-info">
+                    <span className="device-id">{device.cuid}</span>
+                    <span className="device-seen">
+                      Last seen {device.lastSeenAt?.toLocaleString() ?? "never"}
+                    </span>
+                  </div>
+                  <form action={unpairDeviceAction}>
+                    <input type="hidden" name="cuid" value={device.cuid} />
+                    <button className="btn btn-danger" type="submit">Unpair</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
     </Shell>
   );

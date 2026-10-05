@@ -1,8 +1,18 @@
 import { Router } from "express";
 import { prisma } from "../../db";
-import { BOARD_SOUND_LIMIT } from "@gooseboard/shared";
+import { BOARD_SOUND_LIMIT, LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 export const presetsRouter = Router();
+
+/**
+ * How many slots a preset can hold, by the owner's tier. Pro presets are
+ * capped at the CYD's physical grid size since that's the most a device can
+ * ever show; Normal accounts have no device at all, so their one preset is
+ * sized to their library limit instead.
+ */
+function slotLimitFor(tier: "NORMAL" | "PRO") {
+  return tier === "PRO" ? BOARD_SOUND_LIMIT : LIBRARY_SOUND_LIMIT;
+}
 
 /** All of a user's presets, each with its slots and the sound at each position, for the Designer page. */
 presetsRouter.get("/", async (req, res) => {
@@ -38,11 +48,19 @@ presetsRouter.post("/", async (req, res) => {
     return res.status(400).json({ error: "userId and name are required" });
   }
 
-  // Normal tier (the only one enforced so far - TODO(tiers): use
-  // PRO_PRESET_LIMIT once per-user tier checks exist) is capped at one
-  // preset ever, so the first one is activated automatically and every
-  // later one has to be switched to deliberately.
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
   const existingCount = await prisma.preset.count({ where: { userId } });
+
+  // Normal tier is capped at exactly one preset ever (no concept of
+  // "presets" is even shown to them - this is a backstop, not the primary
+  // gate, which lives in the portal UI).
+  if (user.tier !== "PRO" && existingCount >= 1) {
+    return res.status(403).json({ error: "Upgrade to Pro for more than one soundboard" });
+  }
 
   const preset = await prisma.preset.create({
     data: { userId, name, isActive: existingCount === 0 },
@@ -96,16 +114,22 @@ presetsRouter.delete("/:id", async (req, res) => {
   return res.status(204).send();
 });
 
-/** Assigns a library sound to a slot, replacing whatever was there. */
-presetsRouter.put("/:id/slots/:position", async (req, res) => {
+/**
+ * Appends a sound to the next open position. Slots are always kept
+ * compacted (no gaps, filled positions 0..n-1) so the web Designer and the
+ * physical device - which just draws however many buttons it's sent, with
+ * no concept of "empty" - can never disagree about layout.
+ */
+presetsRouter.post("/:id/slots", async (req, res) => {
   const { soundId } = req.body as { soundId?: string };
-  const position = Number(req.params.position);
-
-  if (!soundId || !Number.isInteger(position) || position < 0 || position >= BOARD_SOUND_LIMIT) {
-    return res.status(400).json({ error: `soundId is required and position must be 0-${BOARD_SOUND_LIMIT - 1}` });
+  if (!soundId) {
+    return res.status(400).json({ error: "soundId is required" });
   }
 
-  const preset = await prisma.preset.findUnique({ where: { id: req.params.id } });
+  const preset = await prisma.preset.findUnique({
+    where: { id: req.params.id },
+    include: { user: true, slots: true },
+  });
   if (!preset) {
     return res.status(404).json({ error: "Preset not found" });
   }
@@ -115,24 +139,79 @@ presetsRouter.put("/:id/slots/:position", async (req, res) => {
     return res.status(404).json({ error: "Sound not found" });
   }
 
-  const slot = await prisma.presetSlot.upsert({
-    where: { presetId_position: { presetId: preset.id, position } },
-    create: { presetId: preset.id, position, soundId },
-    update: { soundId },
+  const limit = slotLimitFor(preset.user.tier);
+  if (preset.slots.length >= limit) {
+    return res.status(409).json({ error: `This board is full (max ${limit} sounds)` });
+  }
+
+  const slot = await prisma.presetSlot.create({
+    data: { presetId: preset.id, position: preset.slots.length, soundId },
     include: { sound: true },
   });
   await prisma.preset.update({ where: { id: preset.id }, data: { updatedAt: new Date() } });
 
-  return res.json(slot);
+  return res.status(201).json(slot);
 });
 
-presetsRouter.delete("/:id/slots/:position", async (req, res) => {
+/** Changes which sound sits at an already-filled position, without touching its place in the order. */
+presetsRouter.put("/:id/slots/:position", async (req, res) => {
+  const { soundId } = req.body as { soundId?: string };
   const position = Number(req.params.position);
 
-  await prisma.presetSlot
-    .delete({ where: { presetId_position: { presetId: req.params.id, position } } })
-    .catch(() => null);
-  await prisma.preset.update({ where: { id: req.params.id }, data: { updatedAt: new Date() } }).catch(() => null);
+  if (!soundId || !Number.isInteger(position) || position < 0) {
+    return res.status(400).json({ error: "soundId is required and position must be a non-negative integer" });
+  }
+
+  const preset = await prisma.preset.findUnique({ where: { id: req.params.id } });
+  if (!preset) {
+    return res.status(404).json({ error: "Preset not found" });
+  }
+
+  const existing = await prisma.presetSlot.findUnique({
+    where: { presetId_position: { presetId: preset.id, position } },
+  });
+  if (!existing) {
+    return res.status(404).json({ error: "No sound at that position yet - add one instead of editing it" });
+  }
+
+  const sound = await prisma.sound.findFirst({ where: { id: soundId, userId: preset.userId } });
+  if (!sound) {
+    return res.status(404).json({ error: "Sound not found" });
+  }
+
+  const updated = await prisma.presetSlot.update({
+    where: { id: existing.id },
+    data: { soundId },
+    include: { sound: true },
+  });
+  await prisma.preset.update({ where: { id: preset.id }, data: { updatedAt: new Date() } });
+
+  return res.json(updated);
+});
+
+/** Removes a slot and shifts every later one down by one, so positions stay gap-free. */
+presetsRouter.delete("/:id/slots/:position", async (req, res) => {
+  const position = Number(req.params.position);
+  if (!Number.isInteger(position) || position < 0) {
+    return res.status(400).json({ error: "position must be a non-negative integer" });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.presetSlot.deleteMany({ where: { presetId: req.params.id, position } });
+
+    const remaining = await tx.presetSlot.findMany({
+      where: { presetId: req.params.id },
+      orderBy: { position: "asc" },
+    });
+
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].position !== i) {
+        await tx.presetSlot.update({ where: { id: remaining[i].id }, data: { position: i } });
+      }
+    }
+
+    await tx.preset.update({ where: { id: req.params.id }, data: { updatedAt: new Date() } });
+  });
 
   return res.status(204).send();
 });

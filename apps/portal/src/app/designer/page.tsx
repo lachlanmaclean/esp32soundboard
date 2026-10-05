@@ -49,18 +49,20 @@ export default async function DesignerPage() {
     select: { id: true, displayName: true, color: true, icon: true },
   });
 
+  const isPro = user.tier === "PRO";
+
   return (
-    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Designer" titleIcon="🧩">
+    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Designer" titleIcon="🧩" tier={user.tier}>
       <section className="card">
         <div className="card-header">
           <h2>🧩 Soundboard Designer</h2>
         </div>
         <p className="card-subtext">
-          Click a slot on the board below to put a sound there. The active preset is what shows up on your paired
-          Gooseboard - if you leave gaps, the physical device packs your sounds together in order rather than
-          leaving blank buttons, since it just draws however many buttons it's sent.
+          {isPro
+            ? "Click a slot to put a sound there. The active preset is what shows up on your paired Gooseboard."
+            : "Click a slot to put a sound on your board."}
         </p>
-        <DesignerBoard librarySounds={sounds} />
+        <DesignerBoard librarySounds={sounds} tier={user.tier} />
       </section>
     </Shell>
   );

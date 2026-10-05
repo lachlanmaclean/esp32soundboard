@@ -12,14 +12,18 @@ export function Shell({
   userImage,
   title,
   titleIcon,
+  tier,
   children,
 }: {
   userName: string;
   userImage?: string | null;
   title: string;
   titleIcon: string;
+  /** Normal-tier users have no physical device, so device-related nav/copy is hidden for them entirely. */
+  tier: "NORMAL" | "PRO";
   children: React.ReactNode;
 }) {
+  const isPro = tier === "PRO";
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Locks background scroll while the drawer is open, and guarantees it
@@ -89,12 +93,14 @@ export function Shell({
                 <span className="nav-item-label">Meme library</span>
               </a>
             </li>
-            <li>
-              <a className="nav-item" href="#devices" onClick={closeMenu}>
-                <span className="nav-icon">📟</span>
-                <span className="nav-item-label">Devices</span>
-              </a>
-            </li>
+            {isPro && (
+              <li>
+                <a className="nav-item" href="#devices" onClick={closeMenu}>
+                  <span className="nav-icon">📟</span>
+                  <span className="nav-item-label">Devices</span>
+                </a>
+              </li>
+            )}
           </ul>
         </div>
 
