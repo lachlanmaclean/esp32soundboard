@@ -138,6 +138,11 @@ export async function playSoundInChannel(
   player.play(resource);
 }
 
+/** Stops whatever's currently playing without leaving the channel - used by the web player's Stop control. */
+export function stopPlayback(guildId: string) {
+  playersByGuild.get(guildId)?.stop();
+}
+
 /** Used by /leave, and whenever a connection should be torn down deliberately. */
 export function leaveVoiceChannel(guildId: string) {
   getVoiceConnection(guildId)?.destroy();

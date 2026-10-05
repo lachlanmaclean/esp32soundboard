@@ -5,6 +5,7 @@ import {
   playSoundForUser,
   playExternalSoundForUser,
   playLocalFileForUser,
+  stopPlaybackForUser,
   findUserVoiceChannel,
   TriggerError,
 } from "./bot/trigger";
@@ -73,6 +74,24 @@ async function main() {
       }
       console.error("[bot] local file trigger failed", error);
       return res.status(500).json({ error: "Playback failed" });
+    }
+  });
+
+  app.post("/internal/stop", async (req, res) => {
+    const { userId } = req.body as { userId?: string };
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    try {
+      await stopPlaybackForUser(userId);
+      return res.status(202).json({ ok: true });
+    } catch (error) {
+      if (error instanceof TriggerError) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("[bot] stop failed", error);
+      return res.status(500).json({ error: "Stop failed" });
     }
   });
 

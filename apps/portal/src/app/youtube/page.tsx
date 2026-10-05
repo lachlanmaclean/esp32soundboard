@@ -72,8 +72,9 @@ export default async function YoutubePage() {
           <h2>📺 Play from YouTube</h2>
         </div>
         <p className="card-subtext">
-          Paste a video URL to preview its audio here, or send it straight to your Discord voice channel. Nothing is
-          saved to your library - videos over 15 minutes aren&apos;t supported.
+          Paste a video URL and it plays straight away - add more while one's playing and they queue up, playing
+          back to back automatically. Controls are in the player bar at the bottom of the screen. Nothing is saved
+          to your library - videos over 15 minutes aren&apos;t supported.
         </p>
         <YoutubePlayer />
       </section>

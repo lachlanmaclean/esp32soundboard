@@ -1,10 +1,13 @@
 :root {
-  --bg-rail: #1e1f22;
-  --bg-sidebar: #2b2d31;
-  --bg-primary: #313338;
-  --bg-secondary: #383a40;
-  --bg-floating: #111214;
-  --bg-input: #1e1f22;
+  /* True black base (not just "dark grey") so OLED screens actually turn
+     those pixels off - elevated surfaces (cards, sidebar, inputs) stay just
+     barely lifted so there's still a visible edge between layers. */
+  --bg-rail: #000000;
+  --bg-sidebar: #000000;
+  --bg-primary: #000000;
+  --bg-secondary: #0c0c0d;
+  --bg-floating: #0c0c0d;
+  --bg-input: #0a0a0a;
 
   --brand: #5865f2;
   --brand-hover: #4752c4;
@@ -1381,6 +1384,115 @@ button.sound-tile-empty:hover {
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
+}
+
+/* ---------- now-playing bar (global, outside any page's Shell) ---------- */
+
+.now-playing-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 95;
+  background: var(--bg-floating);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.now-playing-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.now-playing-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  max-width: 220px;
+  flex-shrink: 0;
+}
+
+.now-playing-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-playing-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.now-playing-scrubber {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--brand);
+}
+
+.now-playing-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.now-playing-queue-btn-open {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.now-playing-queue {
+  max-height: 240px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+}
+
+.now-playing-queue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+
+.now-playing-queue-row-current {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.now-playing-queue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Below this, the title/time block and the controls would otherwise
+   squeeze the scrubber down to nothing - stack them instead. */
+@media (max-width: 560px) {
+  .now-playing-bar-inner {
+    flex-wrap: wrap;
+  }
+
+  .now-playing-info {
+    max-width: none;
+    flex: 1 1 auto;
+  }
+
+  .now-playing-scrubber {
+    flex-basis: 100%;
+    order: 3;
+  }
 }
 
 @media (min-width: 640px) {

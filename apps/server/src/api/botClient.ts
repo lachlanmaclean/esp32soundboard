@@ -48,6 +48,20 @@ export async function triggerLocalFilePlayback(userId: string, filePath: string)
   }
 }
 
+/** Stops whatever's currently playing in the user's voice channel. */
+export async function triggerStopPlayback(userId: string): Promise<void> {
+  const res = await fetch(`${env.botInternalUrl}/internal/stop`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new BotProxyError(res.status, body.error ?? "Stop failed");
+  }
+}
+
 /** Best-effort: if the bot is unreachable, assume not-in-voice rather than failing the whole config fetch. */
 export async function isUserInVoiceChannel(discordId: string): Promise<boolean> {
   try {

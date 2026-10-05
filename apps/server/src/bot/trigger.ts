@@ -4,7 +4,7 @@ import { env } from "../env";
 import { ensureOpusFile } from "../audio";
 import { canonicalAudioPath } from "../storage";
 import { discordClient } from "./client";
-import { playSoundInChannel } from "./playback";
+import { playSoundInChannel, stopPlayback } from "./playback";
 
 export class TriggerError extends Error {}
 
@@ -81,4 +81,15 @@ export async function playLocalFileForUser(userId: string, filePath: string) {
   }
 
   await playSoundInChannel(channel, filePath, false);
+}
+
+/** Stops whatever's currently playing in the user's voice channel, e.g. from the web player's Stop control. */
+export async function stopPlaybackForUser(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new TriggerError("User not found");
+
+  const channel = findUserVoiceChannel(user.discordId);
+  if (!channel) return;
+
+  stopPlayback(channel.guild.id);
 }

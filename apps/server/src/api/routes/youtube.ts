@@ -3,7 +3,7 @@ import path from "path";
 import { prisma } from "../../db";
 import { env } from "../../env";
 import { getYoutubeMetadata, downloadYoutubeAudio, scheduleYoutubeTempCleanup, YoutubeError } from "../../youtube";
-import { triggerLocalFilePlayback, BotProxyError } from "../botClient";
+import { triggerLocalFilePlayback, triggerStopPlayback, BotProxyError } from "../botClient";
 import { recordPlayEvent } from "../../analytics";
 
 export const youtubeRouter = Router();
@@ -79,5 +79,24 @@ youtubeRouter.post("/play", async (req, res) => {
     }
     console.error("[youtube] play failed", error);
     return res.status(500).json({ error: "Playback failed" });
+  }
+});
+
+/** Stops whatever's currently playing - used by the web player's Stop control. */
+youtubeRouter.post("/stop", async (req, res) => {
+  const { userId } = req.body as { userId?: string };
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+
+  try {
+    await triggerStopPlayback(userId);
+    return res.status(202).json({ ok: true });
+  } catch (error) {
+    if (error instanceof BotProxyError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error("[youtube] stop failed", error);
+    return res.status(500).json({ error: "Stop failed" });
   }
 });

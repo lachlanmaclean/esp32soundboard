@@ -1,4 +1,6 @@
 import "./globals.css";
+import { PlayerProvider } from "@/components/PlayerProvider";
+import { NowPlayingBar } from "@/components/NowPlayingBar";
 
 export const metadata = {
   title: "Gooseboard",
@@ -15,7 +17,12 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PlayerProvider>
+          {children}
+          <NowPlayingBar />
+        </PlayerProvider>
+      </body>
     </html>
   );
 }
