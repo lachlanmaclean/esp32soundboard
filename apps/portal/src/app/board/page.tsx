@@ -42,10 +42,11 @@ export default async function BoardPage() {
     );
   }
 
-  const sounds = await prisma.sound.findMany({
-    where: { userId: user.id, onBoard: true },
-    orderBy: { createdAt: "asc" },
+  const activePreset = await prisma.preset.findFirst({
+    where: { userId: user.id, isActive: true },
+    include: { slots: { include: { sound: true }, orderBy: { position: "asc" } } },
   });
+  const sounds = activePreset?.slots.map((slot) => slot.sound) ?? [];
 
   return (
     <main className="board-screen">

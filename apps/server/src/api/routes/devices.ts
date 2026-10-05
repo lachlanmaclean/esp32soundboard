@@ -2,7 +2,7 @@ import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
 import { triggerPlayback, isUserInVoiceChannel, BotProxyError } from "../botClient";
-import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
+import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS } from "@gooseboard/shared";
 import type {
   DeviceConfig,
   DeviceRegisterRequest,
@@ -121,23 +121,28 @@ devicesRouter.get("/:cuid/config", async (req, res) => {
     return res.status(409).json({ error: "Device not paired" });
   }
 
-  const [sounds, inVoiceChannel] = await Promise.all([
-    prisma.sound.findMany({
-      where: { userId: device.userId, onBoard: true },
-      orderBy: { createdAt: "asc" },
-      take: BOARD_SOUND_LIMIT,
+  const [activePreset, inVoiceChannel] = await Promise.all([
+    prisma.preset.findFirst({
+      where: { userId: device.userId, isActive: true },
+      include: { slots: { include: { sound: true }, orderBy: { position: "asc" } } },
     }),
     isUserInVoiceChannel(device.user.discordId),
     prisma.device.update({ where: { cuid: device.cuid }, data: { lastSeenAt: new Date() } }),
   ]);
 
+  const slots = activePreset?.slots ?? [];
+  const latestChange = Math.max(
+    activePreset?.updatedAt.getTime() ?? 0,
+    ...slots.map((slot) => slot.sound.updatedAt.getTime()),
+  );
+
   const config: DeviceConfig = {
-    version: sounds.reduce((latest, sound) => Math.max(latest, sound.updatedAt.getTime()), 0),
-    buttons: sounds.map((sound) => ({
-      id: sound.id,
-      displayName: sound.displayName,
-      color: sound.color,
-      icon: sound.icon,
+    version: latestChange,
+    buttons: slots.map((slot) => ({
+      id: slot.sound.id,
+      displayName: slot.sound.displayName,
+      color: slot.sound.color,
+      icon: slot.sound.icon,
     })),
     inVoiceChannel,
   };

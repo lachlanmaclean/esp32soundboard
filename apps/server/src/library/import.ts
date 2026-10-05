@@ -33,7 +33,6 @@ export async function importMyinstantsSound(userId: string, mp3Url: string, disp
       icon: "🤣",
       audioUrl: `/uploads/${path.basename(tempPath)}`,
       fileHash,
-      onBoard: false,
     },
   });
 

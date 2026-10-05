@@ -1,8 +1,14 @@
 // How many sounds a user can upload in total, regardless of how many are
-// actually on their soundboard. Separate from BOARD_SOUND_LIMIT below.
+// actually on a soundboard preset. Normal-tier limit; Pro's is higher (see
+// below). TODO(tiers): wire these into actual per-request tier checks once
+// the tier-gating phase lands - every call site currently uses the Normal
+// numbers as a placeholder.
 export const LIBRARY_SOUND_LIMIT = 30;
-// Physical button-grid size on the CYD, and the web soundboard's matching cap.
+export const PRO_LIBRARY_SOUND_LIMIT = 500;
+// Physical button-grid size on the CYD - every preset is capped at this many
+// slots, since that's the most the device can ever show at once.
 export const BOARD_SOUND_LIMIT = 8;
+export const PRO_PRESET_LIMIT = 50;
 export const PAIRING_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 export const PAIRING_CODE_LENGTH = 6;
 

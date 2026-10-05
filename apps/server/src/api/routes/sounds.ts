@@ -8,7 +8,7 @@ import { env } from "../../env";
 import { triggerPlayback, BotProxyError } from "../botClient";
 import { transcodeToOpus } from "../../audio";
 import { deduplicateUpload, removeUploadedFile, canonicalAudioPath } from "../../storage";
-import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, LIBRARY_SOUND_LIMIT, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
+import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 export const soundsRouter = Router();
 
@@ -32,9 +32,9 @@ async function deleteSoundFiles(sound: { id: string; audioUrl: string; fileHash:
   removeUploadedFile(filePath, canonicalPath, remainingReferences);
 }
 
-/** Called from the portal's upload form - always adds to the library, optionally straight onto the board too. */
+/** Called from the portal's upload form - adds to the library. Assigning it to a soundboard slot is a separate step in the Designer. */
 soundsRouter.post("/", upload.single("audio"), async (req, res) => {
-  const { userId, displayName, color, icon, addToBoard } = req.body as Record<string, string | undefined>;
+  const { userId, displayName, color, icon } = req.body as Record<string, string | undefined>;
 
   if (!req.file) {
     return res.status(400).json({ error: "audio file is required (mp3/wav/ogg, max 5MB)" });
@@ -50,15 +50,6 @@ soundsRouter.post("/", upload.single("audio"), async (req, res) => {
     return res.status(409).json({ error: `Library is full (max ${LIBRARY_SOUND_LIMIT} sounds) - delete one first` });
   }
 
-  const onBoard = addToBoard === "true";
-  if (onBoard) {
-    const boardCount = await prisma.sound.count({ where: { userId, onBoard: true } });
-    if (boardCount >= BOARD_SOUND_LIMIT) {
-      fs.unlink(path.join(env.uploadDir, req.file.filename), () => {});
-      return res.status(409).json({ error: `Soundboard is full (max ${BOARD_SOUND_LIMIT}) - remove one first` });
-    }
-  }
-
   const uploadedPath = path.join(env.uploadDir, req.file.filename);
   const { fileHash, canonicalPath } = await deduplicateUpload(uploadedPath, path.extname(req.file.filename));
 
@@ -70,7 +61,6 @@ soundsRouter.post("/", upload.single("audio"), async (req, res) => {
       icon: icon || null,
       audioUrl: `/uploads/${req.file.filename}`,
       fileHash,
-      onBoard,
     },
   });
 
@@ -104,29 +94,6 @@ soundsRouter.post("/:id/play", async (req, res) => {
     console.error("[sounds] test playback failed", error);
     return res.status(500).json({ error: "Playback failed" });
   }
-});
-
-/** Adds or removes a library sound from the soundboard, capped separately from the library itself. */
-soundsRouter.patch("/:id/board", async (req, res) => {
-  const { onBoard } = req.body as { onBoard?: boolean };
-  if (typeof onBoard !== "boolean") {
-    return res.status(400).json({ error: "onBoard must be a boolean" });
-  }
-
-  const sound = await prisma.sound.findUnique({ where: { id: req.params.id } });
-  if (!sound) {
-    return res.status(404).json({ error: "Sound not found" });
-  }
-
-  if (onBoard && !sound.onBoard) {
-    const boardCount = await prisma.sound.count({ where: { userId: sound.userId, onBoard: true } });
-    if (boardCount >= BOARD_SOUND_LIMIT) {
-      return res.status(409).json({ error: `Soundboard is full (max ${BOARD_SOUND_LIMIT}) - remove one first` });
-    }
-  }
-
-  const updated = await prisma.sound.update({ where: { id: sound.id }, data: { onBoard } });
-  return res.json(updated);
 });
 
 /** Called from the portal's volume slider on each sound. */

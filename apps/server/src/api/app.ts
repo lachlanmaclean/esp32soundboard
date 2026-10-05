@@ -3,6 +3,7 @@ import cors from "cors";
 import { devicesRouter } from "./routes/devices";
 import { soundsRouter } from "./routes/sounds";
 import { libraryRouter } from "./routes/library";
+import { presetsRouter } from "./routes/presets";
 import { env } from "../env";
 
 export function createApp() {
@@ -17,6 +18,7 @@ export function createApp() {
   app.use("/api/devices", devicesRouter);
   app.use("/api/sounds", soundsRouter);
   app.use("/api/library", libraryRouter);
+  app.use("/api/presets", presetsRouter);
 
   return app;
 }

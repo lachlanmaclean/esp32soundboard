@@ -5,11 +5,9 @@ import { useState } from "react";
 /** Starts as a single button; expands into the actual fields only once the user commits to uploading. */
 export function UploadForm({
   action,
-  addToBoard,
   buttonLabel,
 }: {
   action: (formData: FormData) => void;
-  addToBoard: boolean;
   buttonLabel: string;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -24,7 +22,6 @@ export function UploadForm({
 
   return (
     <form action={action} className="field-row">
-      <input type="hidden" name="addToBoard" value={addToBoard ? "true" : "false"} />
       <input type="text" name="displayName" placeholder="Name" required autoFocus />
       <input type="color" name="color" defaultValue="#5865F2" required />
       <input type="text" name="icon" placeholder="Icon (emoji)" maxLength={4} style={{ width: 110 }} />

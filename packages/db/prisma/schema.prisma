@@ -8,22 +8,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserTier {
+  NORMAL
+  PRO
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 // A person who has logged into the portal via Discord OAuth2.
 model User {
-  id              String   @id @default(cuid())
-  discordId       String   @unique
+  id              String     @id @default(cuid())
+  discordId       String     @unique
   discordUsername String
   discordAvatar   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  tier            UserTier   @default(NORMAL)
+  status          UserStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   sounds  Sound[]
   devices Device[]
+  presets Preset[]
 }
 
-// One of up to 30 sounds in a user's library (not per-server, not per-device).
-// A subset (onBoard = true, capped separately at BOARD_SOUND_LIMIT) is what
-// actually shows up as a button on the CYD grid / web soundboard.
+// One of up to LIBRARY_SOUND_LIMIT sounds in a user's library (not per-server,
+// not per-device). Whether/where a sound appears on a soundboard is tracked
+// separately by PresetSlot, not on this model - one sound can sit on several
+// presets (or none) at once.
 model Sound {
   id          String   @id @default(cuid())
   userId      String
@@ -37,15 +51,52 @@ model Sound {
   // SHA-256 of the raw uploaded bytes, used to dedupe identical uploads
   // (even across users) onto one physical file instead of storing copies.
   fileHash    String
-  onBoard     Boolean  @default(false)
   // Playback gain as a percentage - 100 is unchanged, 0 is silent, up to 200
   // (2x) for quiet clips. Applied at play time, not baked into the file.
   volume      Int      @default(100)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  presetSlots PresetSlot[]
+
   @@index([userId])
   @@index([fileHash])
+}
+
+// A saved soundboard page: a named arrangement of library sounds at fixed
+// positions. A user can have several; exactly one is `isActive` at a time,
+// and that's the one synced down to their paired physical device (if any).
+// Pro accounts get many presets capped at BOARD_SOUND_LIMIT slots each (the
+// physical 4x2 grid size); Normal accounts are capped to exactly one preset,
+// sized to their library limit instead, rendered as a flexible web-only grid.
+model Preset {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slots PresetSlot[]
+
+  @@index([userId])
+}
+
+// One sound placed at one position within a preset. Position is a flat
+// index - the physical device grid renders it row-major (4 columns), the
+// Normal-tier flexible grid just wraps it in a CSS grid.
+model PresetSlot {
+  id       String @id @default(cuid())
+  presetId String
+  preset   Preset @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  position Int
+  soundId  String
+  sound    Sound  @relation(fields: [soundId], references: [id], onDelete: Cascade)
+
+  @@unique([presetId, position])
+  @@index([presetId])
+  @@index([soundId])
 }
 
 // A physical CYD device. Devices can exist unpaired (userId null) between

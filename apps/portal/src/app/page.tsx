@@ -4,12 +4,10 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
-import { LIBRARY_SOUND_LIMIT, BOARD_SOUND_LIMIT } from "@gooseboard/shared";
+import { LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
-import { VolumeSlider } from "@/components/VolumeSlider";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { UploadForm } from "@/components/UploadForm";
-import { AddToBoardSlot } from "@/components/AddToBoardSlot";
 import { MemeLibrary } from "@/components/MemeLibrary";
 
 export default async function HomePage({ searchParams }: { searchParams: { error?: string } }) {
@@ -49,9 +47,6 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
   const sounds = await prisma.sound.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
   const devices = await prisma.device.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } });
-  const boardSounds = sounds.filter((sound) => sound.onBoard);
-  const libraryOnlySounds = sounds.filter((sound) => !sound.onBoard);
-  const openBoardSlots = BOARD_SOUND_LIMIT - boardSounds.length;
 
   async function uploadSoundAction(formData: FormData) {
     "use server";
@@ -62,7 +57,6 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     const icon = formData.get("icon") as string;
     if (icon) upstream.append("icon", icon);
     upstream.append("audio", formData.get("audio") as File);
-    upstream.append("addToBoard", formData.get("addToBoard") === "true" ? "true" : "false");
 
     const res = await fetch(`${SERVER_URL}/api/sounds`, { method: "POST", body: upstream });
     if (!res.ok) {
@@ -76,36 +70,6 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     "use server";
     const id = formData.get("id") as string;
     await fetch(`${SERVER_URL}/api/sounds/${id}`, { method: "DELETE" });
-    revalidatePath("/");
-  }
-
-  async function playSoundAction(formData: FormData) {
-    "use server";
-    const id = formData.get("id") as string;
-    const res = await fetch(`${SERVER_URL}/api/sounds/${id}/play`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user!.id }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      redirect(`/?error=${encodeURIComponent(body.error ?? "Playback failed")}`);
-    }
-  }
-
-  async function setBoardAction(formData: FormData) {
-    "use server";
-    const id = formData.get("id") as string;
-    const onBoard = formData.get("onBoard") === "true";
-    const res = await fetch(`${SERVER_URL}/api/sounds/${id}/board`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ onBoard }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      redirect(`/?error=${encodeURIComponent(body.error ?? "Could not update soundboard")}`);
-    }
     revalidatePath("/");
   }
 
@@ -123,43 +87,12 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
       <section className="card" id="soundboard">
         <div className="card-header">
-          <h2>🎛️ Soundboard setup</h2>
-          <span className="count-badge">
-            <a href="/board">Open soundboard →</a> &nbsp; {boardSounds.length}/{BOARD_SOUND_LIMIT}
-          </span>
+          <h2>🎛️ Soundboard Designer</h2>
         </div>
-
-        <div className="sound-grid">
-          {boardSounds.map((sound) => (
-            <div key={sound.id} className="sound-tile" style={{ borderLeftColor: sound.color }}>
-              <div className="sound-tile-head">
-                <span className="sound-tile-name" style={{ color: sound.color }}>
-                  <span>{sound.icon ?? "🔊"}</span>
-                  <span>{sound.displayName}</span>
-                </span>
-              </div>
-              <audio controls src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
-              <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
-              <form action={playSoundAction}>
-                <input type="hidden" name="id" value={sound.id} />
-                <button className="btn btn-success btn-block" type="submit">▶ Play in Discord</button>
-              </form>
-              <form action={setBoardAction}>
-                <input type="hidden" name="id" value={sound.id} />
-                <input type="hidden" name="onBoard" value="false" />
-                <button className="btn btn-block" type="submit">Remove from board</button>
-              </form>
-            </div>
-          ))}
-
-          {Array.from({ length: openBoardSlots }, (_, i) => (
-            <AddToBoardSlot key={i} action={setBoardAction} options={libraryOnlySounds} />
-          ))}
-        </div>
-
-        {sounds.length < LIBRARY_SOUND_LIMIT && boardSounds.length < BOARD_SOUND_LIMIT && (
-          <UploadForm action={uploadSoundAction} addToBoard buttonLabel="Upload to board" />
-        )}
+        <p className="card-subtext">
+          Arrange your library sounds onto a board and save it as a preset.
+        </p>
+        <a className="btn btn-primary" href="/designer">Open Designer →</a>
       </section>
 
       <section className="card" id="sounds">
@@ -197,7 +130,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
         )}
 
         {sounds.length < LIBRARY_SOUND_LIMIT && (
-          <UploadForm action={uploadSoundAction} addToBoard={false} buttonLabel="Upload" />
+          <UploadForm action={uploadSoundAction} buttonLabel="Upload" />
         )}
       </section>
 
