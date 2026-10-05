@@ -1325,9 +1325,10 @@ button.sound-tile-empty:hover {
 }
 
 .admin-row-menu-dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
+  /* Portaled to <body> (AdminRowMenu.tsx) with top/left set inline from the
+     trigger button's bounding rect - position: fixed, not absolute, since
+     it's no longer nested inside .admin-row-menu for positioning purposes. */
+  position: fixed;
   z-index: 97;
   background: var(--bg-floating);
   border: 1px solid var(--border);
