@@ -1324,19 +1324,18 @@ button.sound-tile-empty:hover {
 }
 
 .policy-grid-header span {
-  padding: 8px 10px;
+  padding: 6px 10px;
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   border-bottom: 1px solid var(--border);
 }
 
-.policy-grid-row input,
-.policy-grid-row > span {
-  padding: 8px 10px;
+.policy-grid-row > * {
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
+  min-height: 34px;
 }
 
 .policy-grid-row input[type="text"],
@@ -1346,7 +1345,16 @@ button.sound-tile-empty:hover {
   border-radius: var(--radius-sm);
   color: var(--text-normal);
   font-size: 13px;
-  margin: 4px 0;
+  padding: 4px 8px;
+  margin: 4px 8px 4px 0;
+}
+
+.policy-row-radio {
+  justify-content: center;
+}
+
+.policy-row-radio input[type="radio"] {
+  accent-color: var(--green);
 }
 
 .policy-row-default {

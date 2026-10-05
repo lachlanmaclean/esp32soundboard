@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOwnerDiscordId } from "@/lib/currentUser";
 import { NewPolicyRow } from "@/components/NewPolicyRow";
+import { PolicyRowMenu } from "@/components/PolicyRowMenu";
 
 export const metadata = {
   title: "Gooseboard — Cooldown policies",
@@ -18,6 +19,36 @@ export default async function CooldownPoliciesPage() {
   }
 
   const policies = await prisma.cooldownPolicy.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] });
+
+  /** Saves every row's fields in one go, plus whichever radio is checked as the new default. */
+  async function saveAllPoliciesAction(formData: FormData) {
+    "use server";
+
+    await Promise.all(
+      policies.map((policy) =>
+        prisma.cooldownPolicy.update({
+          where: { id: policy.id },
+          data: {
+            name: (formData.get(`name_${policy.id}`) as string)?.trim() || undefined,
+            maxSoundsInWindow: Number(formData.get(`maxSoundsInWindow_${policy.id}`)),
+            windowSeconds: Number(formData.get(`windowSeconds_${policy.id}`)),
+            cooldownSeconds: Number(formData.get(`cooldownSeconds_${policy.id}`)),
+            limitedDurationSeconds: Number(formData.get(`limitedDurationSeconds_${policy.id}`)),
+          },
+        }),
+      ),
+    );
+
+    const defaultPolicyId = formData.get("defaultPolicyId") as string | null;
+    if (defaultPolicyId) {
+      await prisma.$transaction([
+        prisma.cooldownPolicy.updateMany({ where: { isDefault: true }, data: { isDefault: false } }),
+        prisma.cooldownPolicy.update({ where: { id: defaultPolicyId }, data: { isDefault: true } }),
+      ]);
+    }
+
+    revalidatePath("/admin/policies");
+  }
 
   async function createPolicyAction(formData: FormData) {
     "use server";
@@ -36,24 +67,6 @@ export default async function CooldownPoliciesPage() {
     revalidatePath("/admin/policies");
   }
 
-  async function updatePolicyAction(formData: FormData) {
-    "use server";
-    const id = formData.get("id") as string;
-    const name = formData.get("name") as string;
-
-    await prisma.cooldownPolicy.update({
-      where: { id },
-      data: {
-        name: name?.trim() || undefined,
-        maxSoundsInWindow: Number(formData.get("maxSoundsInWindow")),
-        windowSeconds: Number(formData.get("windowSeconds")),
-        cooldownSeconds: Number(formData.get("cooldownSeconds")),
-        limitedDurationSeconds: Number(formData.get("limitedDurationSeconds")),
-      },
-    });
-    revalidatePath("/admin/policies");
-  }
-
   async function deletePolicyAction(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
@@ -65,17 +78,6 @@ export default async function CooldownPoliciesPage() {
     revalidatePath("/admin/policies");
   }
 
-  async function setDefaultPolicyAction(formData: FormData) {
-    "use server";
-    const id = formData.get("id") as string;
-
-    await prisma.$transaction([
-      prisma.cooldownPolicy.updateMany({ where: { isDefault: true }, data: { isDefault: false } }),
-      prisma.cooldownPolicy.update({ where: { id }, data: { isDefault: true } }),
-    ]);
-    revalidatePath("/admin/policies");
-  }
-
   return (
     <main className="auth-screen" style={{ alignItems: "flex-start", padding: "32px 16px" }}>
       <div className="auth-card" style={{ maxWidth: 1000, width: "100%", textAlign: "left" }}>
@@ -84,7 +86,7 @@ export default async function CooldownPoliciesPage() {
         <p className="card-subtext">
           Trips once a user plays {"maxSoundsInWindow"} sounds within {"windowSeconds"}s; while limited, they must
           wait {"cooldownSeconds"}s between sounds, for {"limitedDurationSeconds"}s total. The default policy can&apos;t
-          be deleted, only replaced by promoting another one.
+          be deleted, only replaced by picking a new one below and saving.
         </p>
 
         <div className="admin-table-wrap">
@@ -98,42 +100,48 @@ export default async function CooldownPoliciesPage() {
               <span>Default</span>
               <span>Actions</span>
             </div>
+          </div>
 
+          <form action={saveAllPoliciesAction} className="policy-grid">
             {policies.map((policy) => (
-              <form key={policy.id} action={updatePolicyAction} className="policy-grid-row">
-                <input type="hidden" name="id" value={policy.id} />
-                <input type="text" name="name" defaultValue={policy.name} />
-                <input type="number" name="maxSoundsInWindow" defaultValue={policy.maxSoundsInWindow} min={1} />
-                <input type="number" name="windowSeconds" defaultValue={policy.windowSeconds} min={1} />
-                <input type="number" name="cooldownSeconds" defaultValue={policy.cooldownSeconds} min={0} />
+              <div key={policy.id} className="policy-grid-row">
+                <input type="text" name={`name_${policy.id}`} defaultValue={policy.name} />
                 <input
                   type="number"
-                  name="limitedDurationSeconds"
+                  name={`maxSoundsInWindow_${policy.id}`}
+                  defaultValue={policy.maxSoundsInWindow}
+                  min={1}
+                />
+                <input type="number" name={`windowSeconds_${policy.id}`} defaultValue={policy.windowSeconds} min={1} />
+                <input
+                  type="number"
+                  name={`cooldownSeconds_${policy.id}`}
+                  defaultValue={policy.cooldownSeconds}
+                  min={0}
+                />
+                <input
+                  type="number"
+                  name={`limitedDurationSeconds_${policy.id}`}
                   defaultValue={policy.limitedDurationSeconds}
                   min={0}
                 />
-                <span className="policy-row-default">{policy.isDefault ? "✅ Default" : ""}</span>
-                <span className="admin-actions">
-                  <button className="btn" type="submit">Save</button>
+                <span className="policy-row-radio">
+                  <input type="radio" name="defaultPolicyId" value={policy.id} defaultChecked={policy.isDefault} />
+                </span>
+                <span>
                   {!policy.isDefault && (
-                    <button
-                      className="btn"
-                      type="submit"
-                      formAction={setDefaultPolicyAction}
-                      title="Make this the default policy"
-                    >
-                      Set default
-                    </button>
-                  )}
-                  {!policy.isDefault && (
-                    <button className="btn btn-danger" type="submit" formAction={deletePolicyAction} title="Delete">
-                      Delete
-                    </button>
+                    <PolicyRowMenu policyId={policy.id} policyName={policy.name} deleteAction={deletePolicyAction} />
                   )}
                 </span>
-              </form>
+              </div>
             ))}
 
+            <button type="submit" className="btn btn-primary" style={{ gridColumn: "1 / -1", margin: "10px" }}>
+              💾 Save changes
+            </button>
+          </form>
+
+          <div className="policy-grid">
             <NewPolicyRow action={createPolicyAction} />
           </div>
         </div>
