@@ -538,14 +538,19 @@ button {
   align-items: center;
 }
 
+/* 16px is deliberate on every text-entry control below, not just these two
+   rules - iOS Safari force-zooms the whole page on focus for anything
+   under 16px, which would otherwise hit every form in the app. */
 input[type="text"],
-input[type="file"] {
+input[type="file"],
+input[type="search"],
+input[type="url"] {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-normal);
   padding: 9px 10px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 input[type="text"]::placeholder {
@@ -959,7 +964,7 @@ button.sound-tile-empty:hover {
   border-radius: var(--radius-sm);
   color: var(--text-normal);
   padding: 6px;
-  font-size: 12px;
+  font-size: 16px; /* not 12px - iOS zooms the page on focus below 16px */
 }
 
 .gooseboard-slot-editing-actions {
@@ -979,8 +984,11 @@ button.sound-tile-empty:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  /* 40px, not 32px - these are the controls most likely to get tapped
+     one-handed (the bottom player bar's transport controls especially),
+     and 32px was below a reasonable touch-target minimum. */
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 50%;
@@ -1240,7 +1248,7 @@ button.sound-tile-empty:hover {
   border-radius: var(--radius-sm);
   color: var(--text-normal);
   padding: 6px;
-  font-size: 12px;
+  font-size: 16px; /* not 12px - iOS zooms the page on focus below 16px */
 }
 
 .board-hint {
@@ -1307,14 +1315,15 @@ button.sound-tile-empty:hover {
 .admin-row-menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Above .now-playing-bar (95), same reasoning as .modal-backdrop. */
+  z-index: 96;
 }
 
 .admin-row-menu-dropdown {
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
-  z-index: 81;
+  z-index: 97;
   background: var(--bg-floating);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1348,7 +1357,9 @@ button.sound-tile-empty:hover {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /* Above .now-playing-bar (95) - a modal must always sit on top of the
+     persistent bottom player bar, never under it. */
+  z-index: 100;
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;

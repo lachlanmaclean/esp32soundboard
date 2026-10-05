@@ -67,7 +67,7 @@ export function NowPlayingBar() {
             className={`icon-btn${queueOpen ? " now-playing-queue-btn-open" : ""}`}
             type="button"
             onClick={() => setQueueOpen((open) => !open)}
-            aria-label="Queue"
+            aria-label={`Queue (${queue.length} track${queue.length === 1 ? "" : "s"})`}
           >
             {queue.length}
           </button>
