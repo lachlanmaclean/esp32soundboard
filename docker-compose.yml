@@ -12,6 +12,11 @@ services:
     # 127.0.0.1 without exposing it beyond this machine.
     ports:
       - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gooseboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Runs `prisma migrate deploy` against postgres, then exits. server/portal
   # depend on it completing so schema is always up to date on deploy.
@@ -23,7 +28,8 @@ services:
     environment:
       DATABASE_URL: postgresql://gooseboard:${POSTGRES_PASSWORD}@postgres:5432/gooseboard
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   # Public API: device pairing, sound uploads, config. Plain HTTP - the
   # default bridge network is fine here and keeps normal Traefik routing.
@@ -48,11 +54,21 @@ services:
       - uploads_data:/data/uploads
     expose:
       - "4000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
-      - postgres
-      - migrate
-      - bot
-      - flaresolverr
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      bot:
+        condition: service_healthy
+      flaresolverr:
+        condition: service_started
 
   # Runs myinstants.com scrape requests through a real headless browser so
   # they clear Cloudflare's bot checks - plain curl/fetch from this host's
@@ -87,9 +103,17 @@ services:
       BOT_INTERNAL_PORT: "4100"
     volumes:
       - uploads_data:/data/uploads
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4100/healthz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
-      - postgres
-      - migrate
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   portal:
     build:
@@ -111,9 +135,19 @@ services:
       OWNER_DISCORD_ID: ${OWNER_DISCORD_ID}
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
-      - postgres
-      - migrate
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      server:
+        condition: service_healthy
 
 volumes:
   postgres_data:

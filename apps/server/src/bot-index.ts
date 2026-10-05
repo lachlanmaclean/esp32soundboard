@@ -52,6 +52,8 @@ async function main() {
     }
   });
 
+  app.get("/healthz", (_req, res) => res.json({ ok: true }));
+
   app.get("/internal/voice-status", (req, res) => {
     const discordId = req.query.discordId as string | undefined;
     if (!discordId) {
