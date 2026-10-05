@@ -2,6 +2,7 @@ import { Router } from "express";
 import { customAlphabet } from "nanoid";
 import { prisma } from "../../db";
 import { triggerPlayback, isUserInVoiceChannel, BotProxyError } from "../botClient";
+import { recordPlayEvent } from "../../analytics";
 import { PAIRING_CODE_LENGTH, PAIRING_CODE_TTL_MS } from "@gooseboard/shared";
 import type {
   DeviceConfig,
@@ -165,6 +166,7 @@ devicesRouter.post("/trigger", async (req, res) => {
 
   try {
     await triggerPlayback(device.userId, soundId);
+    recordPlayEvent(device.userId, soundId, "DEVICE");
     return res.status(202).json({ ok: true });
   } catch (error) {
     if (error instanceof BotProxyError) {

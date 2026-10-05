@@ -123,6 +123,28 @@ button {
 
 /* ---------- app shell (dashboard layout) ---------- */
 
+.impersonation-banner {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #faa61a;
+  color: #1e1f22;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+.impersonation-banner .btn {
+  background: #1e1f22;
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 .shell {
   min-height: 100vh;
   display: flex;
@@ -1119,6 +1141,50 @@ button.sound-tile-empty:hover {
   text-align: center;
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* ---------- admin ---------- */
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.admin-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-table .btn {
+  padding: 4px 8px;
+  font-size: 12px;
 }
 
 @media (min-width: 640px) {

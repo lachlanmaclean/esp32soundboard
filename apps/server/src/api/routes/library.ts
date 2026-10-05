@@ -2,6 +2,7 @@ import { Router } from "express";
 import { searchMyinstants, fetchTrendingMyinstants, isMyinstantsAudioUrl, LibrarySound } from "../../library/myinstants";
 import { importMyinstantsSound } from "../../library/import";
 import { triggerExternalPlayback, BotProxyError } from "../botClient";
+import { recordPlayEvent } from "../../analytics";
 import { prisma } from "../../db";
 import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
@@ -95,6 +96,7 @@ libraryRouter.post("/play", async (req, res) => {
 
   try {
     await triggerExternalPlayback(userId, mp3Url);
+    recordPlayEvent(userId, null, "WEB");
     return res.status(202).json({ ok: true });
   } catch (error) {
     if (error instanceof BotProxyError) {

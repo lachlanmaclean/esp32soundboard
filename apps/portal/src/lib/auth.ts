@@ -16,6 +16,12 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (!account || account.provider !== "discord") return false;
 
+      const existing = await prisma.user.findUnique({ where: { discordId: user.id } });
+      // Blocked at the door, not just hidden - a suspended account can't get
+      // a session at all, so every API route behind getCurrentUser() is
+      // covered without needing its own check.
+      if (existing?.status === "SUSPENDED") return false;
+
       await prisma.user.upsert({
         where: { discordId: user.id },
         create: {

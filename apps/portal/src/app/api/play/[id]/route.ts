@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/currentUser";
 import { SERVER_URL } from "@/lib/serverApi";
 
 /** Tap-to-play for the soundboard, so pressing a button doesn't reload the page. */
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({ where: { discordId: session.user.id } });
+  const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
 
   const res = await fetch(`${SERVER_URL}/api/sounds/${params.id}/play`, {

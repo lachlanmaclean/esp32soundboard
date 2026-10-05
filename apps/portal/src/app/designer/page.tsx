@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
 import { Shell } from "@/components/Shell";
 import { DesignerBoard } from "@/components/DesignerBoard";
 
@@ -26,7 +27,7 @@ export default async function DesignerPage() {
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { discordId: session.user.id } });
+  const { user, isImpersonating } = await resolveEffectiveUser(session.user.id);
 
   if (!user) {
     return (
@@ -52,7 +53,15 @@ export default async function DesignerPage() {
   const isPro = user.tier === "PRO";
 
   return (
-    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Designer" titleIcon="🧩" tier={user.tier}>
+    <Shell
+      userName={user.discordUsername}
+      userImage={user.discordAvatar}
+      title="Designer"
+      titleIcon="🧩"
+      tier={user.tier}
+      isImpersonating={isImpersonating}
+      isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+    >
       <section className="card">
         <div className="card-header">
           <h2>🧩 Soundboard Designer</h2>

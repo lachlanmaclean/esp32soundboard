@@ -31,6 +31,7 @@ export async function playSoundForUser(userId: string, soundId: string) {
   ]);
 
   if (!user) throw new TriggerError("User not found");
+  if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
   if (!sound) throw new TriggerError("Sound not found");
 
   const channel = findUserVoiceChannel(user.discordId);
@@ -58,6 +59,7 @@ export async function playSoundForUser(userId: string, soundId: string) {
 export async function playExternalSoundForUser(userId: string, mp3Url: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new TriggerError("User not found");
+  if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
 
   const channel = findUserVoiceChannel(user.discordId);
   if (!channel) {

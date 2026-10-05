@@ -13,6 +13,8 @@ export function Shell({
   title,
   titleIcon,
   tier,
+  isImpersonating = false,
+  isOwner = false,
   children,
 }: {
   userName: string;
@@ -21,10 +23,21 @@ export function Shell({
   titleIcon: string;
   /** Normal-tier users have no physical device, so device-related nav/copy is hidden for them entirely. */
   tier: "NORMAL" | "PRO";
+  /** True when the owner is viewing as this user via admin impersonation. */
+  isImpersonating?: boolean;
+  /** True for the real owner account (never true while impersonating) - shows the Admin nav link. */
+  isOwner?: boolean;
   children: React.ReactNode;
 }) {
   const isPro = tier === "PRO";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [endingImpersonation, setEndingImpersonation] = useState(false);
+
+  async function returnToAdmin() {
+    setEndingImpersonation(true);
+    await fetch("/api/admin/impersonate", { method: "DELETE" });
+    window.location.href = "/admin";
+  }
 
   // Locks background scroll while the drawer is open, and guarantees it
   // never gets stuck locked (e.g. navigating away mid-animation).
@@ -38,7 +51,16 @@ export function Shell({
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="shell">
+    <>
+      {isImpersonating && (
+        <div className="impersonation-banner">
+          Viewing as <strong>{userName}</strong>
+          <button type="button" className="btn" onClick={returnToAdmin} disabled={endingImpersonation}>
+            {endingImpersonation ? "Returning..." : "Return to admin"}
+          </button>
+        </div>
+      )}
+      <div className="shell">
       <button
         type="button"
         className="menu-toggle"
@@ -104,6 +126,20 @@ export function Shell({
           </ul>
         </div>
 
+        {isOwner && (
+          <div>
+            <div className="nav-section-label">Owner</div>
+            <ul className="nav-list">
+              <li>
+                <a className="nav-item" href="/admin" onClick={closeMenu}>
+                  <span className="nav-icon">🛠️</span>
+                  <span className="nav-item-label">Admin</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        )}
+
         <div>
           <div className="nav-section-label">Discord</div>
           <ul className="nav-list">
@@ -146,6 +182,7 @@ export function Shell({
         </header>
         <div className="content">{children}</div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

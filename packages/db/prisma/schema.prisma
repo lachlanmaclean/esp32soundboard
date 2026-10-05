@@ -18,6 +18,12 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum PlaySource {
+  WEB
+  DEVICE
+  DISCORD
+}
+
 // A person who has logged into the portal via Discord OAuth2.
 model User {
   id              String     @id @default(cuid())
@@ -29,9 +35,41 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  sounds  Sound[]
-  devices Device[]
-  presets Preset[]
+  sounds        Sound[]
+  devices       Device[]
+  presets       Preset[]
+  voiceSessions VoiceSession[]
+  playEvents    PlayEvent[]
+}
+
+// One stretch of time a user spent in a Discord voice channel the bot was
+// also connected to and active in - the "usage time" the owner admin page
+// shows. Started/ended by the bot's own voice-state listener; endedAt is
+// null while the session is still ongoing.
+model VoiceSession {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+}
+
+// One successful sound trigger, from any surface. soundId is null for
+// external plays (meme library, future YouTube) that aren't a library Sound
+// row - still counts toward "times activated" even without one.
+model PlayEvent {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  soundId   String?
+  sound     Sound?     @relation(fields: [soundId], references: [id], onDelete: SetNull)
+  source    PlaySource
+  createdAt DateTime   @default(now())
+
+  @@index([userId])
+  @@index([soundId])
 }
 
 // One of up to LIBRARY_SOUND_LIMIT sounds in a user's library (not per-server,
@@ -58,6 +96,7 @@ model Sound {
   updatedAt   DateTime @updatedAt
 
   presetSlots PresetSlot[]
+  playEvents  PlayEvent[]
 
   @@index([userId])
   @@index([fileHash])
@@ -97,6 +136,19 @@ model PresetSlot {
   @@unique([presetId, position])
   @@index([presetId])
   @@index([soundId])
+}
+
+// Audit trail for the owner's "log in as user" admin action - who, whom,
+// when. Impersonation is powerful enough (full access to that user's
+// account) that it gets a paper trail even with a single trusted admin.
+model ImpersonationLog {
+  id              String    @id @default(cuid())
+  adminDiscordId  String
+  targetUserId    String
+  startedAt       DateTime  @default(now())
+  endedAt         DateTime?
+
+  @@index([targetUserId])
 }
 
 // A physical CYD device. Devices can exist unpaired (userId null) between

@@ -3,6 +3,7 @@ import { env } from "../env";
 import { registerBotCommands } from "./commands";
 import { registerWelcomeMessage } from "./welcome";
 import { registerAutoLeave } from "./playback";
+import { registerVoiceSessionTracking } from "../analytics";
 
 export const discordClient = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
@@ -16,6 +17,7 @@ export async function startBot() {
   registerBotCommands();
   registerWelcomeMessage();
   registerAutoLeave();
+  registerVoiceSessionTracking();
 
   await discordClient.login(env.discordBotToken);
 }

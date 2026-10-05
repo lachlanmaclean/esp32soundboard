@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { prisma } from "../../db";
 import { env } from "../../env";
 import { triggerPlayback, BotProxyError } from "../botClient";
+import { recordPlayEvent } from "../../analytics";
 import { transcodeToOpus } from "../../audio";
 import { deduplicateUpload, removeUploadedFile, canonicalAudioPath } from "../../storage";
 import { ALLOWED_AUDIO_MIME_TYPES, MAX_AUDIO_FILE_BYTES, LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
@@ -93,6 +94,7 @@ soundsRouter.post("/:id/play", async (req, res) => {
 
   try {
     await triggerPlayback(userId, req.params.id);
+    recordPlayEvent(userId, req.params.id, "WEB");
     return res.status(202).json({ ok: true });
   } catch (error) {
     if (error instanceof BotProxyError) {

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
 import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
@@ -28,7 +29,7 @@ export default async function HomePage({ searchParams }: { searchParams: { error
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { discordId: session.user.id } });
+  const { user, isImpersonating } = await resolveEffectiveUser(session.user.id);
 
   if (!user) {
     return (
@@ -86,7 +87,15 @@ export default async function HomePage({ searchParams }: { searchParams: { error
 
 
   return (
-    <Shell userName={session.user.name ?? "Unknown"} userImage={session.user.image} title="Dashboard" titleIcon="🪿" tier={user.tier}>
+    <Shell
+      userName={user.discordUsername}
+      userImage={user.discordAvatar}
+      title="Dashboard"
+      titleIcon="🪿"
+      tier={user.tier}
+      isImpersonating={isImpersonating}
+      isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
+    >
       {searchParams.error && <p className="alert">{searchParams.error}</p>}
 
       <section className="card" id="soundboard">

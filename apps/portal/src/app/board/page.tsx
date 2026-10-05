@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { resolveEffectiveUser } from "@/lib/currentUser";
 import { SoundBoard } from "@/components/SoundBoard";
 
 export const metadata = {
@@ -25,7 +26,7 @@ export default async function BoardPage() {
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { discordId: session.user.id } });
+  const { user } = await resolveEffectiveUser(session.user.id);
 
   if (!user) {
     return (
