@@ -2,17 +2,24 @@
 
 import { useState } from "react";
 import { CHANGELOG } from "@/lib/changelog";
+import { useErrorBanner } from "./ErrorBannerProvider";
 
 /** `shouldShow` is computed server-side (user.lastSeenChangelogVersion vs. the latest entry, and the owner's mute flag) so the admin page can see exactly the same state this reads. */
 export function ChangelogModal({ shouldShow }: { shouldShow: boolean }) {
   const [open, setOpen] = useState(shouldShow);
+  const { reportError } = useErrorBanner();
 
   async function dismiss() {
     setOpen(false);
     try {
-      await fetch("/api/changelog/seen", { method: "POST" });
+      const res = await fetch("/api/changelog/seen", { method: "POST" });
+      if (!res.ok) throw new Error(`Failed to save (${res.status})`);
     } catch (error) {
-      console.error("[changelog] failed to record as seen", error);
+      reportError(
+        `Couldn't save that you've seen the changelog, so it may show up again next time you load the page. (${
+          error instanceof Error ? error.message : "unknown error"
+        })`,
+      );
     }
   }
 

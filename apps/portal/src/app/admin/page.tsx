@@ -9,6 +9,7 @@ import { LATEST_CHANGELOG_VERSION } from "@/lib/changelog";
 import { SERVER_URL } from "@/lib/serverApi";
 import { AdminRowMenu } from "@/components/AdminRowMenu";
 import { PolicyPicker } from "@/components/PolicyPicker";
+import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
 export const metadata = {
   title: "Gooseboard — Admin",
@@ -27,7 +28,7 @@ function formatVoiceMinutes(sessions: { startedAt: Date; endedAt: Date | null }[
   return Math.round(totalMs / 60_000);
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: { error?: string } }) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id || !isOwnerDiscordId(session.user.id)) {
@@ -71,9 +72,15 @@ export default async function AdminPage() {
       prisma.preset.findMany({ where: { userId: id }, select: { id: true } }),
     ]);
 
-    await Promise.all(presets.map((p) => fetch(`${SERVER_URL}/api/presets/${p.id}`, { method: "DELETE" })));
-    await Promise.all(sounds.map((s) => fetch(`${SERVER_URL}/api/sounds/${s.id}`, { method: "DELETE" })));
+    const results = await Promise.all([
+      ...presets.map((p) => fetch(`${SERVER_URL}/api/presets/${p.id}`, { method: "DELETE" })),
+      ...sounds.map((s) => fetch(`${SERVER_URL}/api/sounds/${s.id}`, { method: "DELETE" })),
+    ]);
+    const failed = results.filter((res) => !res.ok).length;
     revalidatePath("/admin");
+    if (failed > 0) {
+      redirect(`/admin?error=${encodeURIComponent(`${failed} item${failed === 1 ? "" : "s"} failed to delete - some content may still remain.`)}`);
+    }
   }
 
   async function toggleChangelogMuteAction(formData: FormData) {
@@ -112,6 +119,7 @@ export default async function AdminPage() {
           <a className="btn" href="/admin/policies">⏱️ Policies</a>
         </div>
 
+        <QueryErrorBanner error={searchParams.error} />
         <p className="card-subtext">{users.length} users</p>
 
         <div className="admin-table-wrap">

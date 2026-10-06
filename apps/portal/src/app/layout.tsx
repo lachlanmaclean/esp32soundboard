@@ -1,4 +1,5 @@
 import "./globals.css";
+import { ErrorBannerProvider } from "@/components/ErrorBannerProvider";
 import { PlayerProvider } from "@/components/PlayerProvider";
 import { NowPlayingBar } from "@/components/NowPlayingBar";
 
@@ -18,10 +19,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <PlayerProvider>
-          {children}
-          <NowPlayingBar />
-        </PlayerProvider>
+        <ErrorBannerProvider>
+          <PlayerProvider>
+            {children}
+            <NowPlayingBar />
+          </PlayerProvider>
+        </ErrorBannerProvider>
       </body>
     </html>
   );

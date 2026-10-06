@@ -1648,3 +1648,54 @@ button.sound-tile-empty:hover {
     min-height: 140px;
   }
 }
+
+/* ---------- error banner ---------- */
+
+.error-banner-stack {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Above everything, including modals (100) - an error needs to be seen
+     even if it was raised while a dialog is open. */
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--red);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.error-banner-icon {
+  flex-shrink: 0;
+}
+
+.error-banner-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.error-banner-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.error-banner-dismiss:hover {
+  opacity: 1;
+}

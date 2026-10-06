@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { SERVER_URL } from "@/lib/serverApi";
+import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
 async function confirmPairing(pairingCode: string, userId: string) {
   "use server";
@@ -97,7 +98,7 @@ export default async function PairPage({
         <h1>Pair your Gooseboard</h1>
         <p>Confirm this pairing code to link the device to your account.</p>
         <div className="code-pill">{pairingCode}</div>
-        {searchParams.error && <p className="alert">{searchParams.error}</p>}
+        <QueryErrorBanner error={searchParams.error} />
         <form action={submit}>
           <button className="btn btn-primary btn-block" type="submit">Confirm pairing</button>
         </form>

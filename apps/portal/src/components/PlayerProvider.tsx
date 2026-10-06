@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useErrorBanner } from "./ErrorBannerProvider";
 
 export interface QueueTrack {
   id: string;
@@ -42,20 +43,34 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { reportError } = useErrorBanner();
 
   const current = currentIndex >= 0 ? (queue[currentIndex] ?? null) : null;
 
-  // Sends the now-current track to the user's Discord voice channel - fire
-  // and forget, same as the local player starting. There's no feedback loop
-  // back from Discord playback finishing, so the queue's "ends" event is
-  // driven entirely by the local preview audio instead.
-  const sendToDiscord = useCallback((track: QueueTrack) => {
-    fetch("/api/youtube/play", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ streamUrl: track.streamUrl }),
-    }).catch((error) => console.error("[player] failed to send track to Discord", error));
-  }, []);
+  // Sends the now-current track to the user's Discord voice channel. There's
+  // no feedback loop back from Discord playback finishing, so the queue's
+  // "ends" event is driven entirely by the local preview audio instead - but
+  // a failure to even start Discord playback is reported, since otherwise
+  // the local preview plays on with no sign anything in Discord went wrong.
+  const sendToDiscord = useCallback(
+    (track: QueueTrack) => {
+      fetch("/api/youtube/play", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ streamUrl: track.streamUrl }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.error || `Discord playback failed to start (${res.status})`);
+          }
+        })
+        .catch((error) =>
+          reportError(error instanceof Error ? error.message : "Couldn't play this track in Discord."),
+        );
+    },
+    [reportError],
+  );
 
   function playIndex(index: number) {
     setCurrentIndex(index);
@@ -83,7 +98,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const audio = audioRef.current;
     if (!audio || !current) return;
     if (playing) audio.pause();
-    else audio.play();
+    else audio.play().catch((error) => reportError(error instanceof Error ? error.message : "Couldn't resume playback."));
   }
 
   function stop() {
@@ -92,7 +107,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audio.pause();
       audio.currentTime = 0;
     }
-    fetch("/api/youtube/stop", { method: "POST" }).catch(() => {});
+    fetch("/api/youtube/stop", { method: "POST" }).catch(() =>
+      reportError("Couldn't stop Discord playback - it may still be playing."),
+    );
   }
 
   function seek(seconds: number) {
@@ -123,8 +140,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!audio || !current) return;
     audio.src = current.streamUrl;
     audio.currentTime = 0;
-    audio.play().catch(() => {});
-  }, [currentIndex, current]);
+    audio.play().catch((error) =>
+      reportError(error instanceof Error ? error.message : "Couldn't start playback in your browser."),
+    );
+  }, [currentIndex, current, reportError]);
 
   return (
     <PlayerContext.Provider

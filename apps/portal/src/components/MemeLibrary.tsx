@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
+import { useErrorBanner } from "@/components/ErrorBannerProvider";
 
 interface LibrarySound {
   name: string;
@@ -16,12 +17,12 @@ const PAGE_SIZE = 10;
 
 export function MemeLibrary() {
   const router = useRouter();
+  const { reportError } = useErrorBanner();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<LibrarySound[]>([]);
   const [trending, setTrending] = useState<LibrarySound[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -29,12 +30,11 @@ export function MemeLibrary() {
     fetch("/api/library/trending")
       .then(async (res) => {
         const body = await res.json().catch(() => ({}));
-        console.log("[meme-library] trending", { status: res.status, body });
         if (!res.ok) throw new Error(body.error ?? `Trending failed (${res.status})`);
         setTrending(Array.isArray(body) ? body : []);
       })
-      .catch((error) => console.error("[meme-library] trending failed", error));
-  }, []);
+      .catch(() => reportError("Couldn't load trending sounds - try again later."));
+  }, [reportError]);
 
   function setRowState(mp3Url: string, state: RowState, resetAfterMs: number) {
     setRowStates((current) => ({ ...current, [mp3Url]: state }));
@@ -48,22 +48,15 @@ export function MemeLibrary() {
     }
 
     setLoading(true);
-    setMessage(null);
 
     try {
       const url = `/api/library/search?q=${encodeURIComponent(value)}`;
-      console.log("[meme-library] search request", { url, value });
       const res = await fetch(url);
-      const body = await res.json().catch((parseError) => {
-        console.error("[meme-library] search response was not valid JSON", parseError);
-        return {};
-      });
-      console.log("[meme-library] search response", { status: res.status, ok: res.ok, body });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Search failed (${res.status})`);
       setResults(body);
-    } catch (error) {
-      console.error("[meme-library] search failed", error);
-      setMessage(error instanceof Error ? error.message : "Search failed");
+    } catch {
+      reportError("Couldn't search the meme library right now - try again later.");
       setResults([]);
     } finally {
       setLoading(false);
@@ -78,10 +71,7 @@ export function MemeLibrary() {
   }
 
   async function play(sound: LibrarySound) {
-    setMessage(null);
-
     try {
-      console.log("[meme-library] play request", sound);
       const res = await fetch("/api/library/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,22 +79,17 @@ export function MemeLibrary() {
       });
 
       const body = await res.json().catch(() => ({}));
-      console.log("[meme-library] play response", { status: res.status, ok: res.ok, body });
       if (!res.ok) throw new Error(body.error ?? `Playback failed (${res.status})`);
 
       setRowState(sound.mp3Url, "playing", 400);
     } catch (error) {
-      console.error("[meme-library] play failed", error);
-      setMessage(error instanceof Error ? error.message : "Playback failed");
+      reportError(error instanceof Error ? error.message : "Couldn't play that sound in Discord.");
       setRowState(sound.mp3Url, "error", 1500);
     }
   }
 
   async function addToLibrary(sound: LibrarySound) {
-    setMessage(null);
-
     try {
-      console.log("[meme-library] import request", sound);
       const res = await fetch("/api/library/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,14 +97,12 @@ export function MemeLibrary() {
       });
 
       const body = await res.json().catch(() => ({}));
-      console.log("[meme-library] import response", { status: res.status, ok: res.ok, body });
       if (!res.ok) throw new Error(body.error ?? `Could not add to library (${res.status})`);
 
       setRowState(sound.mp3Url, "added", 1500);
       router.refresh();
     } catch (error) {
-      console.error("[meme-library] import failed", error);
-      setMessage(error instanceof Error ? error.message : "Could not add to library");
+      reportError(error instanceof Error ? error.message : "Couldn't add that sound to your library.");
       setRowState(sound.mp3Url, "error", 1500);
     }
   }
@@ -142,7 +125,6 @@ export function MemeLibrary() {
 
       {!showingSearch && trending.length > 0 && <div className="nav-section-label">Trending</div>}
 
-      {message && <p className="alert">{message}</p>}
       {loading && <p className="empty-state">Searching...</p>}
 
       {!loading && showingSearch && results.length === 0 && (

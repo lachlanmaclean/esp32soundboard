@@ -10,6 +10,7 @@ import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared
 import { Shell } from "@/components/Shell";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { UploadForm } from "@/components/UploadForm";
+import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
 export const metadata = {
   title: "Gooseboard — Sound library",
@@ -74,7 +75,11 @@ export default async function LibraryPage({ searchParams }: { searchParams: { er
   async function deleteSoundAction(formData: FormData) {
     "use server";
     const id = formData.get("id") as string;
-    await fetch(`${SERVER_URL}/api/sounds/${id}`, { method: "DELETE" });
+    const res = await fetch(`${SERVER_URL}/api/sounds/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      redirect(`/library?error=${encodeURIComponent(body.error ?? `Couldn't delete that sound (${res.status})`)}`);
+    }
     revalidatePath("/library");
   }
 
@@ -89,7 +94,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: { er
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
       showChangelog={shouldShowChangelog(user)}
     >
-      {searchParams.error && <p className="alert">{searchParams.error}</p>}
+      <QueryErrorBanner error={searchParams.error} />
 
       <section className="card">
         <div className="card-header">

@@ -1,17 +1,19 @@
 import { getServerSession } from "next-auth";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { resolveEffectiveUser, isOwnerDiscordId } from "@/lib/currentUser";
 import { shouldShowChangelog } from "@/lib/changelog";
 import { SERVER_URL } from "@/lib/serverApi";
 import { Shell } from "@/components/Shell";
+import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
 export const metadata = {
   title: "Gooseboard — Devices",
 };
 
-export default async function DevicesPage() {
+export default async function DevicesPage({ searchParams }: { searchParams: { error?: string } }) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -63,7 +65,11 @@ export default async function DevicesPage() {
   async function unpairDeviceAction(formData: FormData) {
     "use server";
     const cuid = formData.get("cuid") as string;
-    await fetch(`${SERVER_URL}/api/devices/${cuid}/unpair`, { method: "POST" });
+    const res = await fetch(`${SERVER_URL}/api/devices/${cuid}/unpair`, { method: "POST" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      redirect(`/devices?error=${encodeURIComponent(body.error ?? `Couldn't unpair that device (${res.status})`)}`);
+    }
     revalidatePath("/devices");
   }
 
@@ -78,6 +84,7 @@ export default async function DevicesPage() {
       isOwner={!isImpersonating && isOwnerDiscordId(session.user.id)}
       showChangelog={shouldShowChangelog(user)}
     >
+      <QueryErrorBanner error={searchParams.error} />
       <section className="card">
         <div className="card-header">
           <h2>📟 Devices</h2>
