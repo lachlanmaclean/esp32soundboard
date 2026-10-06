@@ -20,20 +20,32 @@ export default async function CooldownPoliciesPage() {
 
   const policies = await prisma.cooldownPolicy.findMany({ orderBy: [{ isDefault: "desc" }, { name: "asc" }] });
 
-  /** Saves every row's fields in one go, plus whichever radio is checked as the new default. */
+  /**
+   * Saves every row's fields in one go, plus whichever radio is checked as
+   * the new default. Reads which rows exist straight off the submitted
+   * field names (`name_<id>`) rather than closing over the `policies`
+   * array fetched above - keeps this action's registered reference free of
+   * any bound closure state.
+   */
   async function saveAllPoliciesAction(formData: FormData) {
     "use server";
 
+    const ids = new Set<string>();
+    for (const key of formData.keys()) {
+      const match = key.match(/^name_(.+)$/);
+      if (match) ids.add(match[1]);
+    }
+
     await Promise.all(
-      policies.map((policy) =>
+      Array.from(ids).map((id) =>
         prisma.cooldownPolicy.update({
-          where: { id: policy.id },
+          where: { id },
           data: {
-            name: (formData.get(`name_${policy.id}`) as string)?.trim() || undefined,
-            maxSoundsInWindow: Number(formData.get(`maxSoundsInWindow_${policy.id}`)),
-            windowSeconds: Number(formData.get(`windowSeconds_${policy.id}`)),
-            cooldownSeconds: Number(formData.get(`cooldownSeconds_${policy.id}`)),
-            limitedDurationSeconds: Number(formData.get(`limitedDurationSeconds_${policy.id}`)),
+            name: (formData.get(`name_${id}`) as string)?.trim() || undefined,
+            maxSoundsInWindow: Number(formData.get(`maxSoundsInWindow_${id}`)),
+            windowSeconds: Number(formData.get(`windowSeconds_${id}`)),
+            cooldownSeconds: Number(formData.get(`cooldownSeconds_${id}`)),
+            limitedDurationSeconds: Number(formData.get(`limitedDurationSeconds_${id}`)),
           },
         }),
       ),
