@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export function PolicyRowMenu({
@@ -15,8 +15,12 @@ export function PolicyRowMenu({
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
+  const [mounted, setMounted] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // document.body doesn't exist during SSR - only portal once mounted on the client.
+  useEffect(() => setMounted(true), []);
 
   function openMenu() {
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -43,8 +47,10 @@ export function PolicyRowMenu({
 
       {/* This whole subtree, including the hidden delete form, is portaled
           to <body> - it must never be nested inside the page's big
-          save-all <form>, which an in-place render would do. */}
-      {createPortal(
+          save-all <form>, which an in-place render would do. Gated on
+          `mounted` since document.body doesn't exist during SSR. */}
+      {mounted &&
+        createPortal(
         <>
           {menuOpen && (
             <>

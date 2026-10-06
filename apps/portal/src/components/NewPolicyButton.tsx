@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 /** Small "+" button for the page header, opening a modal with the create form - not an inline grid row. */
 export function NewPolicyButton({ action }: { action: (formData: FormData) => void }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // document.body doesn't exist during SSR - only portal once mounted on the client.
+  useEffect(() => setMounted(true), []);
 
   return (
     <>
@@ -14,6 +18,7 @@ export function NewPolicyButton({ action }: { action: (formData: FormData) => vo
       </button>
 
       {open &&
+        mounted &&
         createPortal(
           <div className="modal-backdrop" onClick={() => setOpen(false)}>
             <div className="modal-card" onClick={(event) => event.stopPropagation()}>
