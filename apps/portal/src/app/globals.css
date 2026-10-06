@@ -1348,7 +1348,7 @@ button.sound-tile-empty:hover {
   color: var(--text-normal);
   font-size: 13px;
   padding: 4px 8px;
-  margin: 4px 8px 4px 0;
+  margin: 4px 0;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
