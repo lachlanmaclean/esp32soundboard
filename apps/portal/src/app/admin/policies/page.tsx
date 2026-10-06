@@ -55,10 +55,11 @@ export default async function CooldownPoliciesPage() {
     const name = formData.get("name") as string;
     if (!name?.trim()) return;
 
+    const maxSoundsInWindow = formData.get("maxSoundsInWindow");
     await prisma.cooldownPolicy.create({
       data: {
         name: name.trim(),
-        maxSoundsInWindow: Number(formData.get("maxSoundsInWindow")) || 30,
+        maxSoundsInWindow: maxSoundsInWindow === null || maxSoundsInWindow === "" ? 30 : Number(maxSoundsInWindow),
         windowSeconds: Number(formData.get("windowSeconds")) || 60,
         cooldownSeconds: Number(formData.get("cooldownSeconds")) || 30,
         limitedDurationSeconds: Number(formData.get("limitedDurationSeconds")) || 600,
@@ -96,7 +97,7 @@ export default async function CooldownPoliciesPage() {
           <div className="policy-grid">
             <div className="policy-grid-header">
               <span>Name</span>
-              <span>Max sounds</span>
+              <span title="0 = no limit">Max sounds</span>
               <span>Window (s)</span>
               <span>Cooldown (s)</span>
               <span>Limited for (s)</span>
@@ -113,8 +114,8 @@ export default async function CooldownPoliciesPage() {
                   type="number"
                   name={`maxSoundsInWindow_${policy.id}`}
                   defaultValue={policy.maxSoundsInWindow}
-                  min={1}
-                  aria-label={`${policy.name} - max sounds`}
+                  min={0}
+                  aria-label={`${policy.name} - max sounds (0 = no limit)`}
                 />
                 <input
                   type="number"

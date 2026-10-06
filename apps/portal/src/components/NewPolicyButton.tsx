@@ -30,8 +30,8 @@ export function NewPolicyButton({ action }: { action: (formData: FormData) => vo
                 </label>
                 <div className="new-policy-form-grid">
                   <label>
-                    Max sounds
-                    <input type="number" name="maxSoundsInWindow" defaultValue={30} min={1} />
+                    Max sounds (0 = no limit)
+                    <input type="number" name="maxSoundsInWindow" defaultValue={30} min={0} />
                   </label>
                   <label>
                     Window (s)

@@ -15,6 +15,9 @@ export class RateLimitError extends Error {}
  *   since their last play to satisfy the policy's own cooldown spacing.
  *   rateLimitedUntil itself just lapses naturally once it's in the past;
  *   there's no separate "clear the flag" step.
+ *
+ * maxSoundsInWindow === 0 means the policy has no cap at all - skip
+ * straight through without ever setting rateLimitedUntil.
  */
 export async function enforceCooldown(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -24,6 +27,7 @@ export async function enforceCooldown(userId: string): Promise<void> {
     ? await prisma.cooldownPolicy.findUnique({ where: { id: user.cooldownPolicyId } })
     : await prisma.cooldownPolicy.findFirst({ where: { isDefault: true } });
   if (!policy) return; // No policy configured at all - fail open rather than block everyone.
+  if (policy.maxSoundsInWindow === 0) return;
 
   const now = new Date();
 
