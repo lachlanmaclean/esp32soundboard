@@ -13,11 +13,11 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams.get("q") ?? "";
 
   try {
-    // 15s: a little above the server's own ~12s curl ceiling, so a real
-    // scrape timeout there surfaces as its JSON error instead of this
+    // 30s: a little above the server's own 25s FlareSolverr ceiling, so a
+    // real scrape timeout there surfaces as its JSON error instead of this
     // request aborting first with a generic one.
     const res = await fetch(`${SERVER_URL}/api/library/search?q=${encodeURIComponent(query)}`, {
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(30_000),
     });
     const body = await res.json().catch(() => ({}));
     return NextResponse.json(body, { status: res.status });

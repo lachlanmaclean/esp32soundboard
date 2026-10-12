@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useErrorBanner } from "./ErrorBannerProvider";
+import { PUBLIC_API_URL } from "@/lib/serverApi";
 
 export interface QueueTrack {
   id: string;
@@ -138,7 +139,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !current) return;
-    audio.src = current.streamUrl;
+    // streamUrl is a path on the API server, not the portal - same as the
+    // sound library previews, it has to be fetched from the public API domain.
+    audio.src = `${PUBLIC_API_URL}${current.streamUrl}`;
     audio.currentTime = 0;
     audio.play().catch((error) =>
       reportError(error instanceof Error ? error.message : "Couldn't start playback in your browser."),
