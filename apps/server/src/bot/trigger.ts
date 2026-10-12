@@ -4,7 +4,7 @@ import { env } from "../env";
 import { ensureOpusFile } from "../audio";
 import { canonicalAudioPath } from "../storage";
 import { discordClient } from "./client";
-import { playSoundInChannel, stopPlayback } from "./playback";
+import { playSoundInChannel, setPlaybackVolume, stopPlayback } from "./playback";
 import { enforceCooldown } from "../cooldown";
 
 export class TriggerError extends Error {}
@@ -73,7 +73,7 @@ export async function playExternalSoundForUser(userId: string, mp3Url: string) {
 }
 
 /** Plays an already-downloaded local file (e.g. extracted YouTube audio) - never added to the library/DB. */
-export async function playLocalFileForUser(userId: string, filePath: string) {
+export async function playLocalFileForUser(userId: string, filePath: string, volumePercent = 100) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new TriggerError("User not found");
   if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
@@ -84,7 +84,18 @@ export async function playLocalFileForUser(userId: string, filePath: string) {
     throw new TriggerError("Join a voice channel in a server Gooseboard is in, then try again");
   }
 
-  await playSoundInChannel(channel, filePath, false);
+  await playSoundInChannel(channel, filePath, false, volumePercent, true);
+}
+
+/** Changes the live volume of the web player's current track - deliberately not cooldown-gated, it plays nothing new. */
+export async function setPlaybackVolumeForUser(userId: string, volumePercent: number) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new TriggerError("User not found");
+
+  const channel = findUserVoiceChannel(user.discordId);
+  if (!channel) return;
+
+  setPlaybackVolume(channel.guild.id, volumePercent);
 }
 
 /** Stops whatever's currently playing in the user's voice channel, e.g. from the web player's Stop control. */

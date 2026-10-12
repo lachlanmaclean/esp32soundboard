@@ -11,7 +11,20 @@ function formatTime(seconds: number) {
 }
 
 export function NowPlayingBar() {
-  const { queue, currentIndex, current, playing, currentTime, togglePlay, stop, seek, skipNext, removeFromQueue } = usePlayer();
+  const {
+    queue,
+    currentIndex,
+    current,
+    playing,
+    currentTime,
+    discordVolume,
+    setDiscordVolume,
+    togglePlay,
+    stop,
+    seek,
+    skipNext,
+    removeFromQueue,
+  } = usePlayer();
   const [queueOpen, setQueueOpen] = useState(false);
 
   if (!current) return null;
@@ -52,6 +65,22 @@ export function NowPlayingBar() {
           value={currentTime}
           onChange={(event) => seek(Number(event.target.value))}
         />
+
+        <div className="now-playing-volume" title="Volume in Discord">
+          <span className="volume-icon" aria-hidden="true">
+            {discordVolume === 0 ? "🔇" : discordVolume < 50 ? "🔉" : "🔊"}
+          </span>
+          <input
+            type="range"
+            className="volume-slider"
+            min={0}
+            max={100}
+            step={1}
+            value={discordVolume}
+            onChange={(event) => setDiscordVolume(Number(event.target.value))}
+            aria-label="Volume in Discord"
+          />
+        </div>
 
         <div className="now-playing-controls">
           <button className="icon-btn" type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>

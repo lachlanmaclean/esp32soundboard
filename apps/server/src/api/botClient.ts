@@ -35,16 +35,30 @@ export async function triggerExternalPlayback(userId: string, mp3Url: string): P
 }
 
 /** Plays an already-downloaded local file (e.g. extracted YouTube audio) straight into the user's voice channel. */
-export async function triggerLocalFilePlayback(userId: string, filePath: string): Promise<void> {
+export async function triggerLocalFilePlayback(userId: string, filePath: string, volume: number): Promise<void> {
   const res = await fetch(`${env.botInternalUrl}/internal/trigger-file`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, filePath }),
+    body: JSON.stringify({ userId, filePath, volume }),
   });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new BotProxyError(res.status, body.error ?? "Playback failed");
+  }
+}
+
+/** Changes the live volume of the web player's current track in the user's voice channel. */
+export async function triggerVolumeChange(userId: string, volume: number): Promise<void> {
+  const res = await fetch(`${env.botInternalUrl}/internal/volume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, volume }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new BotProxyError(res.status, body.error ?? "Volume change failed");
   }
 }
 

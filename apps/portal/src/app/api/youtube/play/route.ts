@@ -7,13 +7,13 @@ export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  const { streamUrl } = (await request.json().catch(() => ({}))) as { streamUrl?: string };
+  const { streamUrl, volume } = (await request.json().catch(() => ({}))) as { streamUrl?: string; volume?: number };
   if (!streamUrl) return NextResponse.json({ error: "streamUrl is required" }, { status: 400 });
 
   const res = await fetch(`${SERVER_URL}/api/youtube/play`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: user.id, streamUrl }),
+    body: JSON.stringify({ userId: user.id, streamUrl, volume }),
   });
 
   const body = await res.json().catch(() => ({}));

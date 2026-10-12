@@ -3,7 +3,7 @@ import path from "path";
 import { prisma } from "../../db";
 import { env } from "../../env";
 import { getYoutubeMetadata, downloadYoutubeAudio, scheduleYoutubeTempCleanup, YoutubeError } from "../../youtube";
-import { triggerLocalFilePlayback, triggerStopPlayback, BotProxyError } from "../botClient";
+import { triggerLocalFilePlayback, triggerStopPlayback, triggerVolumeChange, BotProxyError } from "../botClient";
 import { recordPlayEvent } from "../../analytics";
 
 export const youtubeRouter = Router();
@@ -12,6 +12,11 @@ export const youtubeRouter = Router();
 // reject anything that doesn't match that exact shape before turning it
 // back into a filesystem path, so a crafted value can't escape the tmp dir.
 const STREAM_URL_PATTERN = /^\/uploads\/youtube-tmp\/([A-Za-z0-9_-]+\.[A-Za-z0-9]+)$/;
+
+// The player bar's Discord volume slider, as a percentage of the track's own level.
+function isValidVolume(volume: unknown): volume is number {
+  return typeof volume === "number" && Number.isFinite(volume) && volume >= 0 && volume <= 100;
+}
 
 function resolveStreamUrlToPath(streamUrl: string): string | null {
   const match = STREAM_URL_PATTERN.exec(streamUrl);
@@ -55,9 +60,12 @@ youtubeRouter.post("/resolve", async (req, res) => {
 
 /** Plays an already-downloaded preview straight into the user's Discord voice channel. */
 youtubeRouter.post("/play", async (req, res) => {
-  const { userId, streamUrl } = req.body as { userId?: string; streamUrl?: string };
+  const { userId, streamUrl, volume = 100 } = req.body as { userId?: string; streamUrl?: string; volume?: number };
   if (!userId || !streamUrl) {
     return res.status(400).json({ error: "userId and streamUrl are required" });
+  }
+  if (!isValidVolume(volume)) {
+    return res.status(400).json({ error: "volume must be a number between 0 and 100" });
   }
 
   const filePath = resolveStreamUrlToPath(streamUrl);
@@ -67,7 +75,7 @@ youtubeRouter.post("/play", async (req, res) => {
 
   try {
     await requireProUser(userId);
-    await triggerLocalFilePlayback(userId, filePath);
+    await triggerLocalFilePlayback(userId, filePath, volume);
     recordPlayEvent(userId, null, "DISCORD");
     return res.status(202).json({ ok: true });
   } catch (error) {
@@ -79,6 +87,28 @@ youtubeRouter.post("/play", async (req, res) => {
     }
     console.error("[youtube] play failed", error);
     return res.status(500).json({ error: "Playback failed" });
+  }
+});
+
+/** Changes the current track's Discord volume live - used by the web player's volume slider. */
+youtubeRouter.post("/volume", async (req, res) => {
+  const { userId, volume } = req.body as { userId?: string; volume?: number };
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+  if (!isValidVolume(volume)) {
+    return res.status(400).json({ error: "volume must be a number between 0 and 100" });
+  }
+
+  try {
+    await triggerVolumeChange(userId, volume);
+    return res.status(202).json({ ok: true });
+  } catch (error) {
+    if (error instanceof BotProxyError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    console.error("[youtube] volume change failed", error);
+    return res.status(500).json({ error: "Volume change failed" });
   }
 });
 

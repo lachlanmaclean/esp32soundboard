@@ -17,6 +17,8 @@ interface PlayerContextValue {
   current: QueueTrack | null;
   playing: boolean;
   currentTime: number;
+  discordVolume: number;
+  setDiscordVolume: (volume: number) => void;
   enqueue: (track: QueueTrack) => void;
   togglePlay: () => void;
   stop: () => void;
@@ -33,6 +35,19 @@ export function usePlayer() {
   return ctx;
 }
 
+// Remembered per browser so the slider doesn't reset to full on every visit.
+const DISCORD_VOLUME_STORAGE_KEY = "gooseboard.discordVolume";
+
+function readStoredDiscordVolume() {
+  try {
+    const raw = localStorage.getItem(DISCORD_VOLUME_STORAGE_KEY);
+    const stored = raw === null ? NaN : Number(raw);
+    return stored >= 0 && stored <= 100 ? stored : 100;
+  } catch {
+    return 100;
+  }
+}
+
 /**
  * Lives in the root layout (not inside a page's Shell), so this - and the
  * audio element it owns - survives client-side navigation between pages
@@ -43,7 +58,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [discordVolume, setDiscordVolumeState] = useState(100);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Read by sendToDiscord so a new track starts at the slider's level
+  // without the callback (and everything depending on it) re-creating on
+  // every slider movement.
+  const discordVolumeRef = useRef(100);
+  const volumeSendTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const { reportError } = useErrorBanner();
 
   const current = currentIndex >= 0 ? (queue[currentIndex] ?? null) : null;
@@ -58,7 +79,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       fetch("/api/youtube/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ streamUrl: track.streamUrl }),
+        body: JSON.stringify({ streamUrl: track.streamUrl, volume: discordVolumeRef.current }),
       })
         .then(async (res) => {
           if (!res.ok) {
@@ -69,6 +90,45 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         .catch((error) =>
           reportError(error instanceof Error ? error.message : "Couldn't play this track in Discord."),
         );
+    },
+    [reportError],
+  );
+
+  // Read after mount, not in useState's initialiser, so the server render
+  // and the first client render match.
+  useEffect(() => {
+    const stored = readStoredDiscordVolume();
+    discordVolumeRef.current = stored;
+    setDiscordVolumeState(stored);
+  }, []);
+
+  // Dragging fires a change per pixel - only send the value once it settles
+  // briefly, so the bot gets a handful of updates rather than hundreds.
+  const setDiscordVolume = useCallback(
+    (volume: number) => {
+      discordVolumeRef.current = volume;
+      setDiscordVolumeState(volume);
+      try {
+        localStorage.setItem(DISCORD_VOLUME_STORAGE_KEY, String(volume));
+      } catch {}
+
+      clearTimeout(volumeSendTimerRef.current);
+      volumeSendTimerRef.current = setTimeout(() => {
+        fetch("/api/youtube/volume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ volume }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const body = await res.json().catch(() => null);
+              throw new Error(body?.error || `Couldn't change the Discord volume (${res.status})`);
+            }
+          })
+          .catch((error) =>
+            reportError(error instanceof Error ? error.message : "Couldn't change the Discord volume."),
+          );
+      }, 150);
     },
     [reportError],
   );
@@ -150,7 +210,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PlayerContext.Provider
-      value={{ queue, currentIndex, current, playing, currentTime, enqueue, togglePlay, stop, seek, skipNext, removeFromQueue }}
+      value={{ queue, currentIndex, current, playing, currentTime, discordVolume, setDiscordVolume, enqueue, togglePlay, stop, seek, skipNext, removeFromQueue }}
     >
       <audio
         ref={audioRef}

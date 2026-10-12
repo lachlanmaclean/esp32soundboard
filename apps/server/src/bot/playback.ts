@@ -9,6 +9,7 @@ import {
   VoiceConnection,
   VoiceConnectionStatus,
   AudioPlayer,
+  AudioResource,
   NoSubscriberBehavior,
 } from "@discordjs/voice";
 import { Events, type VoiceBasedChannel, type VoiceState } from "discord.js";
@@ -18,6 +19,12 @@ import { discordClient } from "./client";
 // reuse it instead of stacking subscriptions. Playing while already playing
 // interrupts the current sound, which is what a soundboard should do.
 const playersByGuild = new Map<string, AudioPlayer>();
+
+// The currently playing resource per guild, but only when it was started
+// with a live-adjustable volume (YouTube tracks from the web player). Any
+// other play clears it, so the player bar's slider can never reach into a
+// soundboard tap that interrupted the track.
+const adjustableResourcesByGuild = new Map<string, AudioResource>();
 
 // Pending auto-leave timers, so a quick disconnect/reconnect (or someone
 // just switching channels) doesn't boot the bot out immediately.
@@ -42,6 +49,7 @@ function attachStateLogging(connection: VoiceConnection) {
 export function joinFreshVoiceChannel(channel: VoiceBasedChannel) {
   getVoiceConnection(channel.guild.id)?.destroy();
   playersByGuild.delete(channel.guild.id);
+  adjustableResourcesByGuild.delete(channel.guild.id);
   cancelAutoLeave(channel.guild.id);
 
   const connection = joinVoiceChannel({
@@ -104,12 +112,17 @@ function getOrCreatePlayer(guildId: string, connection: VoiceConnection) {
  * (unchanged) default - that mixing needs to decode and re-encode Opus in
  * real time, which is exactly the per-tap cost pre-encoding was added to
  * avoid, so sounds left at their default volume stay on the fast path.
+ *
+ * `adjustableVolume` always turns mixing on, so the volume can be changed
+ * mid-playback with setPlaybackVolume. Only meant for the already-slow
+ * ffmpeg path (YouTube tracks), where the extra mixing cost is negligible.
  */
 export async function playSoundInChannel(
   channel: VoiceBasedChannel,
   filePath: string,
   preEncoded: boolean,
   volumePercent = 100,
+  adjustableVolume = false,
 ) {
   const connection = getOrCreateConnection(channel);
 
@@ -122,7 +135,7 @@ export async function playSoundInChannel(
   }
 
   const player = getOrCreatePlayer(channel.guild.id, connection);
-  const needsVolumeMixing = volumePercent !== 100;
+  const needsVolumeMixing = adjustableVolume || volumePercent !== 100;
 
   const resource = preEncoded
     ? createAudioResource(fs.createReadStream(filePath), {
@@ -135,7 +148,15 @@ export async function playSoundInChannel(
     resource.volume?.setVolume(volumePercent / 100);
   }
 
+  if (adjustableVolume) adjustableResourcesByGuild.set(channel.guild.id, resource);
+  else adjustableResourcesByGuild.delete(channel.guild.id);
+
   player.play(resource);
+}
+
+/** Changes the volume of the current track live, if it was started with `adjustableVolume`. No-op otherwise. */
+export function setPlaybackVolume(guildId: string, volumePercent: number) {
+  adjustableResourcesByGuild.get(guildId)?.volume?.setVolume(volumePercent / 100);
 }
 
 /** Stops whatever's currently playing without leaving the channel - used by the web player's Stop control. */
@@ -147,6 +168,7 @@ export function stopPlayback(guildId: string) {
 export function leaveVoiceChannel(guildId: string) {
   getVoiceConnection(guildId)?.destroy();
   playersByGuild.delete(guildId);
+  adjustableResourcesByGuild.delete(guildId);
   cancelAutoLeave(guildId);
 }
 

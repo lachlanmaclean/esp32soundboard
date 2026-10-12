@@ -6,6 +6,7 @@ import {
   playExternalSoundForUser,
   playLocalFileForUser,
   stopPlaybackForUser,
+  setPlaybackVolumeForUser,
   findUserVoiceChannel,
   TriggerError,
 } from "./bot/trigger";
@@ -67,13 +68,13 @@ async function main() {
   });
 
   app.post("/internal/trigger-file", async (req, res) => {
-    const { userId, filePath } = req.body as { userId?: string; filePath?: string };
+    const { userId, filePath, volume } = req.body as { userId?: string; filePath?: string; volume?: number };
     if (!userId || !filePath) {
       return res.status(400).json({ error: "userId and filePath are required" });
     }
 
     try {
-      await playLocalFileForUser(userId, filePath);
+      await playLocalFileForUser(userId, filePath, volume ?? 100);
       return res.status(202).json({ ok: true });
     } catch (error) {
       if (error instanceof RateLimitError) {
@@ -102,6 +103,24 @@ async function main() {
       }
       console.error("[bot] stop failed", error);
       return res.status(500).json({ error: "Stop failed" });
+    }
+  });
+
+  app.post("/internal/volume", async (req, res) => {
+    const { userId, volume } = req.body as { userId?: string; volume?: number };
+    if (!userId || typeof volume !== "number") {
+      return res.status(400).json({ error: "userId and volume are required" });
+    }
+
+    try {
+      await setPlaybackVolumeForUser(userId, volume);
+      return res.status(202).json({ ok: true });
+    } catch (error) {
+      if (error instanceof TriggerError) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("[bot] volume change failed", error);
+      return res.status(500).json({ error: "Volume change failed" });
     }
   });
 

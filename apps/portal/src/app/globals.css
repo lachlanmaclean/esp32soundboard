@@ -1575,6 +1575,14 @@ button.sound-tile-empty:hover {
   accent-color: var(--brand);
 }
 
+.now-playing-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 120px;
+  flex-shrink: 0;
+}
+
 .now-playing-controls {
   display: flex;
   align-items: center;
@@ -1630,6 +1638,11 @@ button.sound-tile-empty:hover {
   .now-playing-scrubber {
     flex-basis: 100%;
     order: 3;
+  }
+
+  .now-playing-volume {
+    flex: 1 1 100%;
+    order: 4;
   }
 }
 
