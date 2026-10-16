@@ -10,6 +10,7 @@ import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared
 import { Shell } from "@/components/Shell";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
 import { VolumeSlider } from "@/components/VolumeSlider";
+import { RenameSoundControl } from "@/components/RenameSoundControl";
 import { UploadForm } from "@/components/UploadForm";
 import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
@@ -109,10 +110,12 @@ export default async function LibraryPage({ searchParams }: { searchParams: { er
           <div className="sound-list">
             {sounds.map((sound) => (
               <div key={sound.id} className="sound-row" style={{ borderLeftColor: sound.color }}>
-                <span className="sound-row-name" style={{ color: sound.color }}>
-                  <span>{sound.icon ?? "🔊"}</span>
-                  <span>{sound.displayName}</span>
-                </span>
+                <RenameSoundControl
+                  soundId={sound.id}
+                  initialName={sound.displayName}
+                  icon={sound.icon}
+                  color={sound.color}
+                />
 
                 <div className="sound-row-controls">
                   <SoundPreviewButton src={`${PUBLIC_API_URL}${sound.audioUrl}`} />

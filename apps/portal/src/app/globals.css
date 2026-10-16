@@ -1165,6 +1165,21 @@ button.sound-tile-empty:hover {
   transform: scale(0.96);
 }
 
+.rename-btn {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.rename-btn:hover {
+  opacity: 1;
+  background: transparent;
+}
+
 .icon-btn-danger {
   color: var(--text-muted);
   background: transparent;

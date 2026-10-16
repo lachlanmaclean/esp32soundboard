@@ -126,6 +126,28 @@ soundsRouter.patch("/:id/volume", async (req, res) => {
   return res.json(updated);
 });
 
+/** Called from the portal's rename control on each sound. Purely cosmetic - the file/hash/dedup are untouched. */
+soundsRouter.patch("/:id/name", async (req, res) => {
+  const { displayName } = req.body as { displayName?: string };
+  const trimmed = displayName?.trim();
+
+  if (!trimmed || trimmed.length > 60) {
+    return res.status(400).json({ error: "displayName must be 1-60 characters" });
+  }
+
+  const sound = await prisma.sound.findUnique({ where: { id: req.params.id } });
+  if (!sound) {
+    return res.status(404).json({ error: "Sound not found" });
+  }
+
+  const updated = await prisma.sound.update({
+    where: { id: sound.id },
+    data: { displayName: trimmed },
+  });
+
+  return res.json(updated);
+});
+
 soundsRouter.delete("/:id", async (req, res) => {
   const sound = await prisma.sound.findUnique({ where: { id: req.params.id } });
   if (!sound) {
