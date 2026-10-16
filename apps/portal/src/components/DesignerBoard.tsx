@@ -37,7 +37,9 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
+  const [editSoundId, setEditSoundId] = useState("");
   const [editColor, setEditColor] = useState(SLOT_COLORS[0]);
+  const [saving, setSaving] = useState(false);
   const [creatingPreset, setCreatingPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
 
@@ -100,6 +102,14 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   // Empty tiles are interchangeable - adding a sound always appends to the
   // next open position server-side rather than targeting the specific tile
   // clicked, so positions can never develop gaps in the first place.
+  //
+  // Both this and editSlot bump the preset's updatedAt server-side (see
+  // apps/server/src/api/routes/presets.ts), which is also the value the
+  // CYD's config poll compares to decide whether to redraw - there's no
+  // push channel to the device, it's a plain 15s poll (firmware/src/config.h,
+  // kConfigPollIntervalMs), so this is the whole "send an update to the
+  // CYD" story: commit the change here and the device picks it up on its
+  // next poll, no separate step needed.
   async function addSound(presetId: string, soundId: string, color: string | null) {
     setMessage(null);
     const res = await fetch(`/api/presets/${presetId}/slots`, {
@@ -132,16 +142,6 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     await loadPresets(presetId);
   }
 
-  async function setSlotColor(presetId: string, position: number, color: string) {
-    setEditColor(color);
-    await fetch(`/api/presets/${presetId}/slots/${position}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ color }),
-    });
-    await loadPresets(presetId);
-  }
-
   async function clearSlot(presetId: string, position: number) {
     await fetch(`/api/presets/${presetId}/slots/${position}`, { method: "DELETE" });
     setEditingPosition(null);
@@ -156,8 +156,20 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const filledCount = selected.slots.length;
 
   function openEditor(position: number, slot: PresetSlotDTO | undefined) {
+    setEditSoundId(slot?.sound.id ?? "");
     setEditColor(slot?.color ?? slot?.sound.color ?? SLOT_COLORS[0]);
     setEditingPosition(position);
+  }
+
+  async function saveEditor() {
+    if (editingPosition === null || !editSoundId) return;
+    setSaving(true);
+    try {
+      if (editingSound) await editSlot(selected!.id, editingPosition, editSoundId, editColor);
+      else await addSound(selected!.id, editSoundId, editColor);
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Pro mirrors the physical device: a fixed 4x2 grid, every slot visible
@@ -301,16 +313,12 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
 
             <div className="designer-modal-body">
               <select
-                defaultValue={editingSound?.id ?? ""}
-                onChange={(event) => {
-                  if (!event.target.value) return;
-                  if (editingSound) editSlot(selected!.id, editingPosition, event.target.value, editColor);
-                  else addSound(selected!.id, event.target.value, editColor);
-                }}
+                value={editSoundId}
+                onChange={(event) => setEditSoundId(event.target.value)}
                 autoFocus
                 className="btn-block"
               >
-                {!editingSound && <option value="" disabled>Pick a sound...</option>}
+                {!editSoundId && <option value="" disabled>Pick a sound...</option>}
                 {librarySounds.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.icon ? `${option.icon} ` : ""}
@@ -328,9 +336,7 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
                     style={{ background: color }}
                     aria-label={color}
                     aria-pressed={color === editColor}
-                    onClick={() =>
-                      editingSound ? setSlotColor(selected!.id, editingPosition, color) : setEditColor(color)
-                    }
+                    onClick={() => setEditColor(color)}
                   />
                 ))}
               </div>
@@ -348,6 +354,9 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
               )}
               <button className="btn" type="button" onClick={() => setEditingPosition(null)}>
                 Cancel
+              </button>
+              <button className="btn btn-primary" type="button" disabled={!editSoundId || saving} onClick={saveEditor}>
+                {saving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
