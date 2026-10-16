@@ -160,61 +160,12 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     setEditingPosition(position);
   }
 
-  function renderEditPopover(position: number, slot: PresetSlotDTO | undefined, className: string) {
-    const sound = slot?.sound;
-    return (
-      <div key={position} className={className}>
-        <select
-          defaultValue={sound?.id ?? ""}
-          onChange={(event) => {
-            if (!event.target.value) return;
-            if (sound) editSlot(selected!.id, position, event.target.value, editColor);
-            else addSound(selected!.id, event.target.value, editColor);
-          }}
-          autoFocus
-        >
-          {!sound && <option value="" disabled>Pick a sound...</option>}
-          {librarySounds.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.icon ? `${option.icon} ` : ""}
-              {option.displayName}
-            </option>
-          ))}
-        </select>
-        <div className="color-swatch-row" role="group" aria-label="Slot color">
-          {SLOT_COLORS.map((color) => (
-            <button
-              key={color}
-              type="button"
-              className={`color-swatch${color === editColor ? " color-swatch-selected" : ""}`}
-              style={{ background: color }}
-              aria-label={color}
-              aria-pressed={color === editColor}
-              onClick={() => (sound ? setSlotColor(selected!.id, position, color) : setEditColor(color))}
-            />
-          ))}
-        </div>
-        <div className="gooseboard-slot-editing-actions">
-          {sound && (
-            <button className="btn btn-danger" type="button" onClick={() => clearSlot(selected!.id, position)}>
-              Clear
-            </button>
-          )}
-          <button className="btn" type="button" onClick={() => setEditingPosition(null)}>Cancel</button>
-        </div>
-      </div>
-    );
-  }
-
   // Pro mirrors the physical device: a fixed 4x2 grid, every slot visible
   // (filled or not), since that's literally what the hardware's screen
   // looks like.
   const proSlots = Array.from({ length: slotLimit }, (_, position) => {
     const slot = slotsByPosition.get(position);
     const sound = slot?.sound;
-    if (editingPosition === position) {
-      return renderEditPopover(position, slot, "gooseboard-slot gooseboard-slot-editing");
-    }
 
     // Only the next open slot (right after the last filled one) is
     // clickable to add - the rest are just visual "still open" filler so
@@ -248,10 +199,6 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const normalSlots = [
     ...selected.slots.map((slot) => {
       const position = slot.position;
-      if (editingPosition === position) {
-        return renderEditPopover(position, slot, "board-tile board-tile-editing");
-      }
-
       return (
         <button
           key={position}
@@ -265,20 +212,20 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
         </button>
       );
     }),
-    filledCount < slotLimit &&
-      (editingPosition === filledCount ? (
-        renderEditPopover(filledCount, undefined, "board-tile board-tile-editing")
-      ) : (
-        <button
-          key="add"
-          type="button"
-          className="board-tile board-tile-add"
-          onClick={() => openEditor(filledCount, undefined)}
-        >
-          <span className="gooseboard-slot-plus">+</span>
-        </button>
-      )),
+    filledCount < slotLimit && (
+      <button
+        key="add"
+        type="button"
+        className="board-tile board-tile-add"
+        onClick={() => openEditor(filledCount, undefined)}
+      >
+        <span className="gooseboard-slot-plus">+</span>
+      </button>
+    ),
   ].filter(Boolean);
+
+  const editingSlot = editingPosition !== null ? slotsByPosition.get(editingPosition) : undefined;
+  const editingSound = editingSlot?.sound;
 
   return (
     <>
@@ -345,6 +292,66 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
         </div>
       ) : (
         <div className="board-grid">{normalSlots}</div>
+      )}
+
+      {editingPosition !== null && (
+        <div className="modal-backdrop" onClick={() => setEditingPosition(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <h3>{editingSound ? "Edit slot" : "Add a sound"}</h3>
+
+            <div className="designer-modal-body">
+              <select
+                defaultValue={editingSound?.id ?? ""}
+                onChange={(event) => {
+                  if (!event.target.value) return;
+                  if (editingSound) editSlot(selected!.id, editingPosition, event.target.value, editColor);
+                  else addSound(selected!.id, event.target.value, editColor);
+                }}
+                autoFocus
+                className="btn-block"
+              >
+                {!editingSound && <option value="" disabled>Pick a sound...</option>}
+                {librarySounds.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.icon ? `${option.icon} ` : ""}
+                    {option.displayName}
+                  </option>
+                ))}
+              </select>
+
+              <div className="color-swatch-row" role="group" aria-label="Slot color">
+                {SLOT_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`color-swatch${color === editColor ? " color-swatch-selected" : ""}`}
+                    style={{ background: color }}
+                    aria-label={color}
+                    aria-pressed={color === editColor}
+                    onClick={() =>
+                      editingSound ? setSlotColor(selected!.id, editingPosition, color) : setEditColor(color)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              {editingSound && (
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  onClick={() => clearSlot(selected!.id, editingPosition)}
+                >
+                  Clear
+                </button>
+              )}
+              <button className="btn" type="button" onClick={() => setEditingPosition(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

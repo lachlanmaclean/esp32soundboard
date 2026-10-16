@@ -1648,6 +1648,13 @@ button.sound-tile-empty:hover {
   font-size: 17px;
 }
 
+.designer-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
