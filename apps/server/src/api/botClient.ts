@@ -21,11 +21,11 @@ export async function triggerPlayback(userId: string, soundId: string): Promise<
   }
 }
 
-export async function triggerExternalPlayback(userId: string, mp3Url: string): Promise<void> {
+export async function triggerExternalPlayback(userId: string, mp3Url: string, volume = 100): Promise<void> {
   const res = await fetch(`${env.botInternalUrl}/internal/trigger-external`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, mp3Url }),
+    body: JSON.stringify({ userId, mp3Url, volume }),
   });
 
   if (!res.ok) {

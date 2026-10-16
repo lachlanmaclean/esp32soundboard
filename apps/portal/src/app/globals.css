@@ -302,6 +302,17 @@ button {
   font-size: 16px;
 }
 
+.pro-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #1e1f22;
+  background: linear-gradient(135deg, #f6c453, #f2994a);
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
 .nav-section-label {
   padding: 0 8px;
   font-size: 11px;
@@ -1172,6 +1183,25 @@ button.sound-tile-empty:hover {
 
 .volume-value-pending {
   color: var(--text-faint);
+}
+
+/* ---------- meme library global volume sliders ---------- */
+
+.meme-volume-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.meme-volume-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .delete-form {

@@ -2,8 +2,14 @@
 
 import { useRef, useState } from "react";
 
-/** Small icon-only play/pause control, replacing the native <audio controls> bar's scrubber, volume and menu nobody here needs. */
-export function SoundPreviewButton({ src }: { src: string }) {
+/**
+ * Small icon-only play/pause control, replacing the native <audio controls>
+ * bar's scrubber, volume and menu nobody here needs.
+ *
+ * `volume` is 0-100, applied at the moment playback starts - not reactive
+ * mid-playback, since these clips are short enough that doesn't matter.
+ */
+export function SoundPreviewButton({ src, volume = 100 }: { src: string; volume?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -15,6 +21,7 @@ export function SoundPreviewButton({ src }: { src: string }) {
       audio.pause();
     } else {
       audio.currentTime = 0;
+      audio.volume = Math.min(100, Math.max(0, volume)) / 100;
       audio.play();
     }
   }

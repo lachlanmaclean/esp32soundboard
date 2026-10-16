@@ -58,7 +58,7 @@ export async function playSoundForUser(userId: string, soundId: string) {
  * downloading anything to disk first - at the cost of always taking the slow
  * ffmpeg-transcode path, same as an unencoded upload.
  */
-export async function playExternalSoundForUser(userId: string, mp3Url: string) {
+export async function playExternalSoundForUser(userId: string, mp3Url: string, volumePercent = 100) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new TriggerError("User not found");
   if (user.status === "SUSPENDED") throw new TriggerError("Account suspended");
@@ -69,7 +69,7 @@ export async function playExternalSoundForUser(userId: string, mp3Url: string) {
     throw new TriggerError("Join a voice channel in a server Gooseboard is in, then try again");
   }
 
-  await playSoundInChannel(channel, mp3Url, false);
+  await playSoundInChannel(channel, mp3Url, false, volumePercent);
 }
 
 /** Plays an already-downloaded local file (e.g. extracted YouTube audio) - never added to the library/DB. */

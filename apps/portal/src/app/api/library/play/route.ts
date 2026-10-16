@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 });
   }
 
-  const { mp3Url } = (await request.json().catch(() => ({}))) as { mp3Url?: string };
+  const { mp3Url, volume } = (await request.json().catch(() => ({}))) as { mp3Url?: string; volume?: number };
   if (!mp3Url) {
     return NextResponse.json({ error: "mp3Url is required" }, { status: 400 });
   }
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const res = await fetch(`${SERVER_URL}/api/library/play`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: user.id, mp3Url }),
+    body: JSON.stringify({ userId: user.id, mp3Url, volume }),
   });
 
   const body = await res.json().catch(() => ({}));

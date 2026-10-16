@@ -14,6 +14,8 @@ interface LibrarySound {
 type RowState = "idle" | "playing" | "added" | "error";
 
 const PAGE_SIZE = 10;
+const LOCAL_VOLUME_KEY = "gooseboard.memeLocalVolume";
+const DISCORD_VOLUME_KEY = "gooseboard.memeDiscordVolume";
 
 export function MemeLibrary() {
   const router = useRouter();
@@ -25,6 +27,11 @@ export function MemeLibrary() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
+  // Global, not per-item - everything this screen plays (preview or
+  // Discord) uses whichever of these was set last, same convention as the
+  // now-playing bar's Discord volume slider.
+  const [localVolume, setLocalVolume] = useState(100);
+  const [discordVolume, setDiscordVolume] = useState(100);
   const searchAbortRef = useRef<AbortController>();
 
   useEffect(() => {
@@ -36,6 +43,35 @@ export function MemeLibrary() {
       })
       .catch(() => reportError("Couldn't load trending sounds - try again later."));
   }, [reportError]);
+
+  useEffect(() => {
+    try {
+      const storedLocal = localStorage.getItem(LOCAL_VOLUME_KEY);
+      const storedDiscord = localStorage.getItem(DISCORD_VOLUME_KEY);
+      if (storedLocal !== null) setLocalVolume(Number(storedLocal));
+      if (storedDiscord !== null) setDiscordVolume(Number(storedDiscord));
+    } catch {
+      // Private browsing / blocked storage - just keep the defaults.
+    }
+  }, []);
+
+  function changeLocalVolume(value: number) {
+    setLocalVolume(value);
+    try {
+      localStorage.setItem(LOCAL_VOLUME_KEY, String(value));
+    } catch {
+      // Ignore - nothing to persist to if storage is blocked.
+    }
+  }
+
+  function changeDiscordVolume(value: number) {
+    setDiscordVolume(value);
+    try {
+      localStorage.setItem(DISCORD_VOLUME_KEY, String(value));
+    } catch {
+      // Ignore - nothing to persist to if storage is blocked.
+    }
+  }
 
   function setRowState(mp3Url: string, state: RowState, resetAfterMs: number) {
     setRowStates((current) => ({ ...current, [mp3Url]: state }));
@@ -85,7 +121,7 @@ export function MemeLibrary() {
       const res = await fetch("/api/library/play", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mp3Url: sound.mp3Url }),
+        body: JSON.stringify({ mp3Url: sound.mp3Url, volume: discordVolume }),
       });
 
       const body = await res.json().catch(() => ({}));
@@ -124,6 +160,41 @@ export function MemeLibrary() {
 
   return (
     <>
+      <div className="meme-volume-bar">
+        <div className="volume-row">
+          <span className="volume-icon" aria-hidden="true">
+            🎧
+          </span>
+          <span className="meme-volume-label">Preview volume</span>
+          <input
+            type="range"
+            className="volume-slider"
+            min={0}
+            max={100}
+            value={localVolume}
+            onChange={(event) => changeLocalVolume(Number(event.target.value))}
+            aria-label="Local preview volume"
+          />
+          <span className="volume-value">{localVolume}%</span>
+        </div>
+        <div className="volume-row">
+          <span className="volume-icon" aria-hidden="true">
+            🤖
+          </span>
+          <span className="meme-volume-label">Discord volume</span>
+          <input
+            type="range"
+            className="volume-slider"
+            min={0}
+            max={100}
+            value={discordVolume}
+            onChange={(event) => changeDiscordVolume(Number(event.target.value))}
+            aria-label="Discord playback volume"
+          />
+          <span className="volume-value">{discordVolume}%</span>
+        </div>
+      </div>
+
       <form onSubmit={onSearchSubmit} className="field-row" style={{ width: "100%" }}>
         <input
           type="search"
@@ -153,7 +224,7 @@ export function MemeLibrary() {
               <div key={sound.mp3Url} className="sound-row">
                 <span className="sound-row-name">{sound.name}</span>
                 <div className="sound-row-actions">
-                  <SoundPreviewButton src={sound.mp3Url} />
+                  <SoundPreviewButton src={sound.mp3Url} volume={localVolume} />
                   <button className="btn btn-success" type="button" onClick={() => play(sound)}>
                     ▶ Play on Discord
                   </button>

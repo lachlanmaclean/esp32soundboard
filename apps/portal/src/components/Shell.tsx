@@ -91,6 +91,7 @@ export function Shell({
         <div className="sidebar-header">
           <span className="brand-mark">🪿</span>
           <span className="brand-name">Gooseboard</span>
+          {isPro && <span className="pro-badge">PRO</span>}
         </div>
 
         <div>

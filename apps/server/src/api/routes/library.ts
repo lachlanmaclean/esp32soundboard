@@ -117,16 +117,19 @@ libraryRouter.get("/trending", async (_req, res) => {
 
 /** Plays a myinstants clip straight from its URL - nothing stored in the user's own library. */
 libraryRouter.post("/play", async (req, res) => {
-  const { userId, mp3Url } = req.body as { userId?: string; mp3Url?: string };
+  const { userId, mp3Url, volume } = req.body as { userId?: string; mp3Url?: string; volume?: number };
   if (!userId || !mp3Url) {
     return res.status(400).json({ error: "userId and mp3Url are required" });
   }
   if (!isMyinstantsAudioUrl(mp3Url)) {
     return res.status(400).json({ error: "mp3Url must be a myinstants.com sound" });
   }
+  if (volume !== undefined && (typeof volume !== "number" || volume < 0 || volume > 100)) {
+    return res.status(400).json({ error: "volume must be a number between 0 and 100" });
+  }
 
   try {
-    await triggerExternalPlayback(userId, mp3Url);
+    await triggerExternalPlayback(userId, mp3Url, volume ?? 100);
     recordPlayEvent(userId, null, "WEB");
     return res.status(202).json({ ok: true });
   } catch (error) {

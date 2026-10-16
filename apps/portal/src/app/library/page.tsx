@@ -9,6 +9,7 @@ import { SERVER_URL, PUBLIC_API_URL } from "@/lib/serverApi";
 import { LIBRARY_SOUND_LIMIT, PRO_LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 import { Shell } from "@/components/Shell";
 import { SoundPreviewButton } from "@/components/SoundPreviewButton";
+import { VolumeSlider } from "@/components/VolumeSlider";
 import { UploadForm } from "@/components/UploadForm";
 import { QueryErrorBanner } from "@/components/QueryErrorBanner";
 
@@ -115,6 +116,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: { er
 
                 <div className="sound-row-controls">
                   <SoundPreviewButton src={`${PUBLIC_API_URL}${sound.audioUrl}`} />
+                  <VolumeSlider soundId={sound.id} initialVolume={sound.volume} />
 
                   <div className="sound-row-actions">
                     <form action={deleteSoundAction} className="delete-form">

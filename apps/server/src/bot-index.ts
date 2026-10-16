@@ -47,13 +47,13 @@ async function main() {
   });
 
   app.post("/internal/trigger-external", async (req, res) => {
-    const { userId, mp3Url } = req.body as { userId?: string; mp3Url?: string };
+    const { userId, mp3Url, volume } = req.body as { userId?: string; mp3Url?: string; volume?: number };
     if (!userId || !mp3Url) {
       return res.status(400).json({ error: "userId and mp3Url are required" });
     }
 
     try {
-      await playExternalSoundForUser(userId, mp3Url);
+      await playExternalSoundForUser(userId, mp3Url, volume ?? 100);
       return res.status(202).json({ ok: true });
     } catch (error) {
       if (error instanceof RateLimitError) {
