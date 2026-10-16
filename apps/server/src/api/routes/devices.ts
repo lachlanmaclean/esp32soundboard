@@ -142,7 +142,7 @@ devicesRouter.get("/:cuid/config", async (req, res) => {
     buttons: slots.map((slot) => ({
       id: slot.sound.id,
       displayName: slot.sound.displayName,
-      color: slot.sound.color,
+      color: slot.color ?? slot.sound.color,
       icon: slot.sound.icon,
     })),
     inVoiceChannel,

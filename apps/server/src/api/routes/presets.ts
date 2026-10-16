@@ -121,7 +121,7 @@ presetsRouter.delete("/:id", async (req, res) => {
  * no concept of "empty" - can never disagree about layout.
  */
 presetsRouter.post("/:id/slots", async (req, res) => {
-  const { soundId } = req.body as { soundId?: string };
+  const { soundId, color } = req.body as { soundId?: string; color?: string | null };
   if (!soundId) {
     return res.status(400).json({ error: "soundId is required" });
   }
@@ -145,7 +145,7 @@ presetsRouter.post("/:id/slots", async (req, res) => {
   }
 
   const slot = await prisma.presetSlot.create({
-    data: { presetId: preset.id, position: preset.slots.length, soundId },
+    data: { presetId: preset.id, position: preset.slots.length, soundId, color: color ?? null },
     include: { sound: true },
   });
   await prisma.preset.update({ where: { id: preset.id }, data: { updatedAt: new Date() } });
@@ -155,7 +155,7 @@ presetsRouter.post("/:id/slots", async (req, res) => {
 
 /** Changes which sound sits at an already-filled position, without touching its place in the order. */
 presetsRouter.put("/:id/slots/:position", async (req, res) => {
-  const { soundId } = req.body as { soundId?: string };
+  const { soundId, color } = req.body as { soundId?: string; color?: string | null };
   const position = Number(req.params.position);
 
   if (!soundId || !Number.isInteger(position) || position < 0) {
@@ -181,7 +181,38 @@ presetsRouter.put("/:id/slots/:position", async (req, res) => {
 
   const updated = await prisma.presetSlot.update({
     where: { id: existing.id },
-    data: { soundId },
+    data: { soundId, ...(color !== undefined ? { color } : {}) },
+    include: { sound: true },
+  });
+  await prisma.preset.update({ where: { id: preset.id }, data: { updatedAt: new Date() } });
+
+  return res.json(updated);
+});
+
+/** Changes just the color override at an already-filled position, leaving its sound untouched. */
+presetsRouter.patch("/:id/slots/:position", async (req, res) => {
+  const { color } = req.body as { color?: string | null };
+  const position = Number(req.params.position);
+
+  if (color === undefined || !Number.isInteger(position) || position < 0) {
+    return res.status(400).json({ error: "color is required and position must be a non-negative integer" });
+  }
+
+  const preset = await prisma.preset.findUnique({ where: { id: req.params.id } });
+  if (!preset) {
+    return res.status(404).json({ error: "Preset not found" });
+  }
+
+  const existing = await prisma.presetSlot.findUnique({
+    where: { presetId_position: { presetId: preset.id, position } },
+  });
+  if (!existing) {
+    return res.status(404).json({ error: "No sound at that position yet - add one first" });
+  }
+
+  const updated = await prisma.presetSlot.update({
+    where: { id: existing.id },
+    data: { color },
     include: { sound: true },
   });
   await prisma.preset.update({ where: { id: preset.id }, data: { updatedAt: new Date() } });

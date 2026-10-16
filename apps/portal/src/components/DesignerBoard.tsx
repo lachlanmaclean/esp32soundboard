@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BOARD_SOUND_LIMIT, LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 interface LibrarySoundOption {
@@ -13,6 +13,7 @@ interface LibrarySoundOption {
 interface PresetSlotDTO {
   position: number;
   sound: LibrarySoundOption;
+  color: string | null;
 }
 
 interface PresetDTO {
@@ -31,6 +32,8 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
+  const [editColor, setEditColor] = useState("#5865F2");
+  const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [creatingPreset, setCreatingPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
 
@@ -93,12 +96,12 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   // Empty tiles are interchangeable - adding a sound always appends to the
   // next open position server-side rather than targeting the specific tile
   // clicked, so positions can never develop gaps in the first place.
-  async function addSound(presetId: string, soundId: string) {
+  async function addSound(presetId: string, soundId: string, color: string | null) {
     setMessage(null);
     const res = await fetch(`/api/presets/${presetId}/slots`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ soundId }),
+      body: JSON.stringify({ soundId, color }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -109,12 +112,12 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     await loadPresets(presetId);
   }
 
-  async function editSlot(presetId: string, position: number, soundId: string) {
+  async function editSlot(presetId: string, position: number, soundId: string, color: string | null) {
     setMessage(null);
     const res = await fetch(`/api/presets/${presetId}/slots/${position}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ soundId }),
+      body: JSON.stringify({ soundId, color }),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -123,6 +126,21 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     }
     setEditingPosition(null);
     await loadPresets(presetId);
+  }
+
+  // Debounced like the sound-library volume slider - the native color input
+  // can fire onChange repeatedly while dragging inside its picker.
+  function setSlotColor(presetId: string, position: number, color: string) {
+    setEditColor(color);
+    if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+    colorDebounceRef.current = setTimeout(async () => {
+      await fetch(`/api/presets/${presetId}/slots/${position}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ color }),
+      });
+      await loadPresets(presetId);
+    }, 300);
   }
 
   async function clearSlot(presetId: string, position: number) {
@@ -135,22 +153,28 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   if (!selected) return <p className="empty-state">Could not load your board.</p>;
 
   // Server keeps slots gap-free (positions 0..n-1), so this is always dense.
-  const slotsByPosition = new Map(selected.slots.map((slot) => [slot.position, slot.sound]));
+  const slotsByPosition = new Map(selected.slots.map((slot) => [slot.position, slot]));
   const filledCount = selected.slots.length;
 
-  function renderEditPopover(position: number, sound: LibrarySoundOption | undefined, className: string) {
+  function openEditor(position: number, slot: PresetSlotDTO | undefined) {
+    setEditColor(slot?.color ?? slot?.sound.color ?? "#5865F2");
+    setEditingPosition(position);
+  }
+
+  function renderEditPopover(position: number, slot: PresetSlotDTO | undefined, className: string) {
+    const sound = slot?.sound;
     return (
       <div key={position} className={className}>
         <select
-          defaultValue=""
+          defaultValue={sound?.id ?? ""}
           onChange={(event) => {
             if (!event.target.value) return;
-            if (sound) editSlot(selected!.id, position, event.target.value);
-            else addSound(selected!.id, event.target.value);
+            if (sound) editSlot(selected!.id, position, event.target.value, editColor);
+            else addSound(selected!.id, event.target.value, editColor);
           }}
           autoFocus
         >
-          <option value="" disabled>Pick a sound...</option>
+          {!sound && <option value="" disabled>Pick a sound...</option>}
           {librarySounds.map((option) => (
             <option key={option.id} value={option.id}>
               {option.icon ? `${option.icon} ` : ""}
@@ -158,6 +182,14 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
             </option>
           ))}
         </select>
+        <input
+          type="color"
+          value={editColor}
+          onChange={(event) =>
+            sound ? setSlotColor(selected!.id, position, event.target.value) : setEditColor(event.target.value)
+          }
+          aria-label="Slot color"
+        />
         <div className="gooseboard-slot-editing-actions">
           {sound && (
             <button className="btn btn-danger" type="button" onClick={() => clearSlot(selected!.id, position)}>
@@ -174,9 +206,10 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   // (filled or not), since that's literally what the hardware's screen
   // looks like.
   const proSlots = Array.from({ length: slotLimit }, (_, position) => {
-    const sound = slotsByPosition.get(position);
+    const slot = slotsByPosition.get(position);
+    const sound = slot?.sound;
     if (editingPosition === position) {
-      return renderEditPopover(position, sound, "gooseboard-slot gooseboard-slot-editing");
+      return renderEditPopover(position, slot, "gooseboard-slot gooseboard-slot-editing");
     }
 
     // Only the next open slot (right after the last filled one) is
@@ -189,9 +222,9 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
         key={position}
         type="button"
         className={`gooseboard-slot${sound ? "" : " gooseboard-slot-empty"}`}
-        style={sound ? { background: sound.color } : undefined}
+        style={sound ? { background: slot!.color ?? sound.color } : undefined}
         disabled={!sound && !isNextOpen}
-        onClick={() => setEditingPosition(position)}
+        onClick={() => openEditor(position, slot)}
       >
         {sound ? (
           <>
@@ -212,7 +245,7 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     ...selected.slots.map((slot) => {
       const position = slot.position;
       if (editingPosition === position) {
-        return renderEditPopover(position, slot.sound, "board-tile board-tile-editing");
+        return renderEditPopover(position, slot, "board-tile board-tile-editing");
       }
 
       return (
@@ -220,8 +253,8 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
           key={position}
           type="button"
           className="board-tile"
-          style={{ ["--tile-color" as string]: slot.sound.color }}
-          onClick={() => setEditingPosition(position)}
+          style={{ ["--tile-color" as string]: slot.color ?? slot.sound.color }}
+          onClick={() => openEditor(position, slot)}
         >
           <span className="board-tile-icon">{slot.sound.icon ?? "🔊"}</span>
           <span className="board-tile-name">{slot.sound.displayName}</span>
@@ -236,7 +269,7 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
           key="add"
           type="button"
           className="board-tile board-tile-add"
-          onClick={() => setEditingPosition(filledCount)}
+          onClick={() => openEditor(filledCount, undefined)}
         >
           <span className="gooseboard-slot-plus">+</span>
         </button>

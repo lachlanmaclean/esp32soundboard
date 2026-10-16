@@ -47,7 +47,8 @@ export default async function BoardPage() {
     where: { userId: user.id, isActive: true },
     include: { slots: { include: { sound: true }, orderBy: { position: "asc" } } },
   });
-  const sounds = activePreset?.slots.map((slot) => slot.sound) ?? [];
+  const sounds =
+    activePreset?.slots.map((slot) => ({ ...slot.sound, color: slot.color ?? slot.sound.color })) ?? [];
 
   return (
     <main className="board-screen">

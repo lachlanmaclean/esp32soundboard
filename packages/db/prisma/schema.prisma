@@ -173,6 +173,9 @@ model PresetSlot {
   position Int
   soundId  String
   sound    Sound  @relation(fields: [soundId], references: [id], onDelete: Cascade)
+  // Per-slot color override - lets the same sound show up differently
+  // across slots/presets. Null means "fall back to the sound's own color".
+  color    String?
 
   @@unique([presetId, position])
   @@index([presetId])

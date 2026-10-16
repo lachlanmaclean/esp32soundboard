@@ -30,7 +30,6 @@ export async function importMyinstantsSound(userId: string, mp3Url: string, disp
       userId,
       displayName,
       color: colorFor(displayName),
-      icon: "🤣",
       audioUrl: `/uploads/${path.basename(tempPath)}`,
       fileHash,
     },
