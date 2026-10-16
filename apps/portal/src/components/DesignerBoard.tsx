@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BOARD_SOUND_LIMIT, LIBRARY_SOUND_LIMIT } from "@gooseboard/shared";
 
 interface LibrarySoundOption {
@@ -9,6 +9,11 @@ interface LibrarySoundOption {
   color: string;
   icon: string | null;
 }
+
+// Fixed palette, not a free-form color picker - the CYD's screen reads best
+// with a small set of distinct, high-contrast colors rather than anything
+// a picker could produce.
+const SLOT_COLORS = ["#5865F2", "#23A55A", "#F23F43", "#FAA61A", "#EB459E"];
 
 interface PresetSlotDTO {
   position: number;
@@ -32,8 +37,7 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
-  const [editColor, setEditColor] = useState("#5865F2");
-  const colorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editColor, setEditColor] = useState(SLOT_COLORS[0]);
   const [creatingPreset, setCreatingPreset] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
 
@@ -128,19 +132,14 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
     await loadPresets(presetId);
   }
 
-  // Debounced like the sound-library volume slider - the native color input
-  // can fire onChange repeatedly while dragging inside its picker.
-  function setSlotColor(presetId: string, position: number, color: string) {
+  async function setSlotColor(presetId: string, position: number, color: string) {
     setEditColor(color);
-    if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
-    colorDebounceRef.current = setTimeout(async () => {
-      await fetch(`/api/presets/${presetId}/slots/${position}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ color }),
-      });
-      await loadPresets(presetId);
-    }, 300);
+    await fetch(`/api/presets/${presetId}/slots/${position}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color }),
+    });
+    await loadPresets(presetId);
   }
 
   async function clearSlot(presetId: string, position: number) {
@@ -157,7 +156,7 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
   const filledCount = selected.slots.length;
 
   function openEditor(position: number, slot: PresetSlotDTO | undefined) {
-    setEditColor(slot?.color ?? slot?.sound.color ?? "#5865F2");
+    setEditColor(slot?.color ?? slot?.sound.color ?? SLOT_COLORS[0]);
     setEditingPosition(position);
   }
 
@@ -182,14 +181,19 @@ export function DesignerBoard({ librarySounds, tier }: { librarySounds: LibraryS
             </option>
           ))}
         </select>
-        <input
-          type="color"
-          value={editColor}
-          onChange={(event) =>
-            sound ? setSlotColor(selected!.id, position, event.target.value) : setEditColor(event.target.value)
-          }
-          aria-label="Slot color"
-        />
+        <div className="color-swatch-row" role="group" aria-label="Slot color">
+          {SLOT_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              className={`color-swatch${color === editColor ? " color-swatch-selected" : ""}`}
+              style={{ background: color }}
+              aria-label={color}
+              aria-pressed={color === editColor}
+              onClick={() => (sound ? setSlotColor(selected!.id, position, color) : setEditColor(color))}
+            />
+          ))}
+        </div>
         <div className="gooseboard-slot-editing-actions">
           {sound && (
             <button className="btn btn-danger" type="button" onClick={() => clearSlot(selected!.id, position)}>

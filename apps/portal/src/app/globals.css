@@ -712,6 +712,30 @@ input[type="radio"] {
   height: 16px;
 }
 
+.color-swatch-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.color-swatch:hover {
+  filter: brightness(1.1);
+}
+
+.color-swatch-selected {
+  border-color: var(--text-normal);
+  box-shadow: 0 0 0 2px var(--bg-primary);
+}
+
 /* ---------- buttons ---------- */
 
 .btn {
