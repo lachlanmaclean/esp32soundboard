@@ -34,6 +34,23 @@ export function isMyinstantsAudioUrl(url: string) {
   }
 }
 
+// Serializes every FlareSolverr call process-wide. The cache/in-flight map
+// below only collapses *identical* queries - distinct queries (e.g. each
+// pause while someone types a sentence) still reach here as separate calls,
+// and firing those at FlareSolverr concurrently makes its single headless
+// browser instance starve itself, so some calls blow past its own 20s
+// challenge-solve timeout. Queuing keeps it to one request at a time.
+let flareQueue: Promise<unknown> = Promise.resolve();
+
+function withFlareQueue<T>(fn: () => Promise<T>): Promise<T> {
+  const run = flareQueue.then(fn, fn);
+  flareQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 /**
  * Both Node's own fetch and plain curl get a flat 403 from Cloudflare here -
  * confirmed to be IP-reputation based (this host's hosting-provider IP),
@@ -43,6 +60,10 @@ export function isMyinstantsAudioUrl(url: string) {
  * Cloudflare's checks the same way a real visitor's browser would.
  */
 async function flareGet(url: string): Promise<string> {
+  return withFlareQueue(() => flareGetOnce(url));
+}
+
+async function flareGetOnce(url: string): Promise<string> {
   let res: Response;
   try {
     res = await fetch(`${env.flaresolverrUrl}/v1`, {

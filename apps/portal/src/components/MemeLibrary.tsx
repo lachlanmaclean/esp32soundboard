@@ -19,12 +19,13 @@ export function MemeLibrary() {
   const router = useRouter();
   const { reportError } = useErrorBanner();
   const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [results, setResults] = useState<LibrarySound[]>([]);
   const [trending, setTrending] = useState<LibrarySound[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [rowStates, setRowStates] = useState<Record<string, RowState>>({});
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchAbortRef = useRef<AbortController>();
 
   useEffect(() => {
     fetch("/api/library/trending")
@@ -42,32 +43,41 @@ export function MemeLibrary() {
   }
 
   async function runSearch(value: string) {
+    // Cancels whatever search is still in flight - guards against someone
+    // mashing the search button, not against typing anymore (search only
+    // ever fires on submit now).
+    searchAbortRef.current?.abort();
+
     if (!value.trim()) {
       setResults([]);
       return;
     }
 
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
     setLoading(true);
 
     try {
       const url = `/api/library/search?q=${encodeURIComponent(value)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: controller.signal });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? `Search failed (${res.status})`);
       setResults(body);
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       reportError("Couldn't search the meme library right now - try again later.");
       setResults([]);
     } finally {
-      setLoading(false);
+      if (searchAbortRef.current === controller) setLoading(false);
     }
   }
 
-  function onQueryChange(value: string) {
-    setQuery(value);
+  function onSearchSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setPage(0);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => runSearch(value), 400);
+    setSubmittedQuery(query);
+    runSearch(query);
   }
 
   async function play(sound: LibrarySound) {
@@ -107,28 +117,32 @@ export function MemeLibrary() {
     }
   }
 
-  const showingSearch = query.trim().length > 0;
+  const showingSearch = submittedQuery.trim().length > 0;
   const shownResults = showingSearch ? results : trending;
   const pageCount = Math.ceil(shownResults.length / PAGE_SIZE) || 1;
   const pageResults = shownResults.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <>
-      <input
-        type="search"
-        placeholder="Search myinstants.com for a sound..."
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        className="field-row"
-        style={{ width: "100%" }}
-      />
+      <form onSubmit={onSearchSubmit} className="field-row" style={{ width: "100%" }}>
+        <input
+          type="search"
+          placeholder="Search myinstants.com for a sound..."
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          style={{ flex: 1 }}
+        />
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          Search
+        </button>
+      </form>
 
       {!showingSearch && trending.length > 0 && <div className="nav-section-label">Trending</div>}
 
       {loading && <p className="empty-state">Searching...</p>}
 
       {!loading && showingSearch && results.length === 0 && (
-        <div className="empty-state">No results for &quot;{query}&quot;.</div>
+        <div className="empty-state">No results for &quot;{submittedQuery}&quot;.</div>
       )}
 
       {!loading && pageResults.length > 0 && (
