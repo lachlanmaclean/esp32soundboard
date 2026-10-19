@@ -1345,10 +1345,14 @@ button.sound-tile-empty:hover {
   margin: 0;
 }
 
+/* Fluid, not a hardcoded 2-column mobile default - a narrow phone (~360px)
+   still lands on 3 columns, but a wider or near-square viewport (e.g. a
+   handheld's second display, ~412px+) picks up 4+ on its own, without a
+   device-specific breakpoint. */
 .board-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: 12px;
   align-content: start;
 }
@@ -1844,10 +1848,6 @@ button.sound-tile-empty:hover {
     max-width: 720px;
     margin: 0 auto;
     padding: 24px;
-  }
-
-  .board-grid {
-    grid-template-columns: repeat(4, 1fr);
   }
 
   .board-tile {
